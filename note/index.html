@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>こころノート</title>
+<meta name="description" content="出来事を受けとめ、伝え方を練習するノート">
+<meta name="theme-color" content="#EDEEEB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131315" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="こころノート">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+/* Layout: a quiet notebook column, sister to こころボール. One step at a time; hairlines instead of boxes. */
+:root{
+  --bg:#EDEEEB; --surface:#F7F7F5; --ink:#23262A; --muted:#6C7076; --line:#D3D5D1;
+  --accent:#4B4358; --accent-ink:#F7F7F5; --soft:#E4E2E8; --chip:#E5E6E2;
+  --good:#5B7360; --warn:#8A5858; --calm:#5E6F86;
+  --f-display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --r:3px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131315; --surface:#1B1B1E; --ink:#E7E5E9; --muted:#9A979F; --line:#2E2D32;
+  --accent:#BDB0CC; --accent-ink:#17161A; --soft:#26232B; --chip:#232227;
+  --good:#9DB7A2; --warn:#D49C9C; --calm:#9FB1C9; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131315; --surface:#1B1B1E; --ink:#E7E5E9; --muted:#9A979F; --line:#2E2D32;
+  --accent:#BDB0CC; --accent-ink:#17161A; --soft:#26232B; --chip:#232227;
+  --good:#9DB7A2; --warn:#D49C9C; --calm:#9FB1C9; color-scheme:dark}
+
+[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:14.5px;line-height:1.8;letter-spacing:.02em;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 56px}
+.app{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h1{font-family:var(--f-display);font-weight:500;font-size:1.45rem;margin:0;letter-spacing:.18em}
+.date{color:var(--muted);font-size:.78rem;letter-spacing:.14em;font-variant-numeric:tabular-nums}
+h2{font-family:var(--f-display);font-weight:500;font-size:1.1rem;letter-spacing:.16em;margin:0}
+h3{font-family:var(--f-display);font-weight:500;font-size:1rem;letter-spacing:.12em;margin:0}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:.8rem}
+
+.tabs{display:flex;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{flex:1;min-width:4.5em;border:0;border-bottom:1px solid transparent;margin-bottom:-1px;background:transparent;color:var(--muted);font-family:var(--f-display);font-size:.95rem;letter-spacing:.14em;padding:10px 4px;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible,select:focus-visible{outline:1px solid var(--accent);outline-offset:3px}
+
+.view{display:flex;flex-direction:column;gap:18px}
+.lead{font-size:.86rem;color:var(--muted);line-height:1.8}
+.banner{border-left:2px solid var(--accent);background:var(--soft);padding:10px 14px;font-size:.88rem}
+.banner b{font-family:var(--f-display);font-weight:500;letter-spacing:.08em}
+
+/* stepper */
+.steps{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+.steps button{border:0;background:transparent;padding:0 0 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font:inherit;font-size:.66rem;letter-spacing:0}
+.steps button i{display:block;width:100%;height:2px;background:var(--line)}
+.steps button.done i{background:var(--muted)}
+.steps button[aria-current="step"]{color:var(--ink)}
+.steps button[aria-current="step"] i{background:var(--ink)}
+.stage-label{font-size:.74rem;letter-spacing:.2em;color:var(--muted)}
+.step{display:flex;flex-direction:column;gap:14px}
+.step-head{display:flex;align-items:baseline;gap:12px}
+.step-no{font-family:var(--f-display);font-size:1.6rem;line-height:1;color:var(--muted);font-variant-numeric:tabular-nums}
+.guide{font-size:.86rem;color:var(--muted)}
+.nav{display:flex;justify-content:space-between;gap:10px;padding-top:6px}
+
+textarea,input[type=text]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;width:100%;box-sizing:border-box}
+textarea{min-height:88px;resize:vertical;line-height:1.7}
+textarea.short{min-height:56px}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>label,.field>.lbl{font-size:.86rem}
+.field .hint{font-size:.76rem;color:var(--muted)}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.82rem;padding:3px 12px;border-radius:var(--r);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.addrow{display:flex;gap:8px}
+.addrow input{flex:1;min-width:0}
+
+.mood{display:grid;grid-template-columns:6em minmax(0,1fr) 2.6em;align-items:center;gap:10px}
+.mood .v{text-align:right;font-family:var(--f-display);font-variant-numeric:tabular-nums}
+.thought{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.thought label{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--muted);white-space:nowrap}
+.thought input[type=radio]{accent-color:var(--accent)}
+.thought .t{overflow-wrap:anywhere}
+.x{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 6px}
+.hot{font-family:var(--f-display);font-size:1.05rem;border-left:2px solid var(--warn);padding:6px 12px;background:var(--surface)}
+.hot small{display:block;font-family:var(--f-body);font-size:.72rem;color:var(--muted);letter-spacing:.1em}
+
+details.q{border-top:1px solid var(--line);padding:8px 0}
+details.q:last-of-type{border-bottom:1px solid var(--line)}
+details.q summary{cursor:pointer;font-size:.9rem;list-style:none;display:flex;justify-content:space-between;gap:8px}
+details.q summary::after{content:"＋";color:var(--muted)}
+details.q[open] summary::after{content:"－"}
+details.q summary::-webkit-details-marker{display:none}
+details.q .body{display:flex;flex-direction:column;gap:6px;padding-top:8px}
+details.q.filled summary{color:var(--accent)}
+details.q.filled summary::after{content:"✓";color:var(--accent)}
+details.q.filled[open] summary::after{content:"－"}
+
+.primary{border:0;background:var(--ink);color:var(--surface);font-family:var(--f-display);font-size:.95rem;letter-spacing:.2em;padding:12px 18px;border-radius:var(--r);cursor:pointer}
+.ghost{border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.84rem;padding:8px 14px;border-radius:var(--r);cursor:pointer}
+.ghost:disabled,.primary:disabled{opacity:.45;cursor:default}
+.link{border:0;background:transparent;color:var(--accent);font:inherit;font-size:.84rem;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toast{font-size:.84rem;color:var(--good);min-height:1.3em}
+
+.seg{display:flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.seg button{flex:1;min-width:0;border:0;border-right:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.82rem;padding:8px 4px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+
+.types{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.types button{border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;padding:8px 6px;border-radius:var(--r);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.types button b{font-family:var(--f-display);font-weight:500;font-size:.9rem;letter-spacing:.06em}
+.types button span{font-size:.68rem;color:var(--muted);line-height:1.4;text-align:center}
+.types button[aria-pressed="true"]{border-color:var(--accent);background:var(--soft)}
+
+.desc{display:grid;grid-template-columns:2.4em minmax(0,1fr);gap:10px 12px;align-items:start}
+.desc .k{font-family:var(--f-display);font-size:1.4rem;line-height:1.2;color:var(--accent);text-align:center}
+.desc .k small{display:block;font-family:var(--f-body);font-size:.6rem;color:var(--muted);letter-spacing:.04em}
+.example{font-size:.78rem;color:var(--muted);border-left:1px solid var(--line);padding-left:10px}
+.preview{font-family:var(--f-display);font-size:1rem;line-height:1.9;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;white-space:pre-wrap}
+
+.compare{display:grid;grid-template-columns:4.5em minmax(0,1fr) minmax(0,1fr);gap:6px 10px;align-items:center;font-size:.86rem}
+.compare .h{font-size:.72rem;color:var(--muted);letter-spacing:.1em}
+.bar{height:6px;background:var(--line);position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--warn)}
+.bar.after i{background:var(--calm)}
+.compare .n{font-variant-numeric:tabular-nums;font-family:var(--f-display)}
+
+.ai{border:1px solid var(--accent);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+.ai .tag{font-size:.68rem;letter-spacing:.2em;color:var(--accent)}
+.ai-out{font-size:.9rem;white-space:pre-wrap;line-height:1.8}
+.ai-out ul{margin:0;padding-left:1.2em}
+.chat{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;padding:4px 0}
+.msg{max-width:85%;padding:8px 12px;border-radius:10px;font-size:.9rem;white-space:pre-wrap;line-height:1.7}
+.msg.them{align-self:flex-start;background:var(--soft)}
+.msg.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink)}
+.msg.coach{align-self:stretch;max-width:none;border:1px dashed var(--line);background:transparent}
+
+.section{display:flex;flex-direction:column;gap:12px;padding:16px 0;border-bottom:1px solid var(--line)}
+.section:first-child{padding-top:4px}
+.tcards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tcard{border-top:2px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:4px;font-size:.82rem;min-width:0}
+.tcard b{font-family:var(--f-display);font-weight:500;font-size:.95rem}
+.tcard.ag{border-color:var(--warn)}.tcard.pa{border-color:var(--calm)}.tcard.as{border-color:var(--good)}
+.tcard q{color:var(--muted)}
+.table{width:100%;border-collapse:collapse;font-size:.84rem}
+.table th,.table td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+.table th{font-family:var(--f-display);font-weight:500;color:var(--accent);white-space:nowrap}
+.scroll{overflow-x:auto}
+.opt{display:block;width:100%;text-align:left;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.88rem;padding:10px 12px;border-radius:var(--r);cursor:pointer;line-height:1.6}
+.opt.right{border-color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent)}
+.opt.wrong{border-color:var(--warn)}
+.opt .lab{display:block;font-size:.72rem;color:var(--muted);margin-top:2px}
+.opts{display:flex;flex-direction:column;gap:6px}
+.steplist{margin:0;padding-left:1.4em;font-size:.86rem;display:flex;flex-direction:column;gap:4px}
+
+.rec{border-bottom:1px solid var(--line);padding:10px 0}
+.rec summary{cursor:pointer;list-style:none;display:grid;grid-template-columns:4.2em 4.6em minmax(0,1fr);gap:8px;align-items:baseline}
+.rec summary::-webkit-details-marker{display:none}
+.rec .d{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.rec .k{font-size:.7rem;letter-spacing:.1em;border:1px solid var(--line);border-radius:var(--r);text-align:center;padding:0 4px}
+.rec .s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.88rem}
+.rec dl{display:grid;grid-template-columns:7.5em minmax(0,1fr);gap:4px 10px;margin:10px 0 0;font-size:.84rem}
+.rec dt{color:var(--muted)}
+.rec dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.tally{display:flex;height:10px;border-radius:2px;overflow:hidden;background:var(--line)}
+.tally i{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.78rem;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:8px;height:8px;margin-right:5px;background:var(--c)}
+.confirm{display:flex;gap:8px;align-items:center;font-size:.82rem;color:var(--warn)}
+.note{font-size:.76rem;color:var(--muted);line-height:1.7}
+@media (max-width:420px){.types{grid-template-columns:1fr}.tcards{grid-template-columns:1fr}.steps button{font-size:.6rem}}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <h1>こころノート</h1>
+    <div class="date" id="today"></div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-v="seiri" aria-selected="true">受けとめる</button>
+    <button role="tab" data-v="assert" aria-selected="false">伝える</button>
+    <button role="tab" data-v="learn" aria-selected="false">学ぶ</button>
+    <button role="tab" data-v="log" aria-selected="false">記録</button>
+  </nav>
+
+  <section class="view" id="v-seiri"></section>
+  <section class="view" id="v-assert" hidden></section>
+  <section class="view" id="v-learn" hidden></section>
+  <section class="view" id="v-log" hidden></section>
+
+  <p class="note">こころノートはセルフケアのための道具で、治療やカウンセリングの代わりではありません。つらさが強いときや長く続くときは、医療機関や身近な人に相談してください。</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+const KEY="kokoro-note-v1", DRAFT="kokoro-note-draft";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const pad=n=>String(n).padStart(2,"0");
+const dkey=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const wd=["日","月","火","水","木","金","土"];
+const fmtDate=k=>{const p=k.split("-");const d=new Date(+p[0],p[1]-1,+p[2]);return (d.getMonth()+1)+"/"+d.getDate()+"（"+wd[d.getDay()]+"）"};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+function load(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb}catch(e){return fb}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+const now=new Date();$("#today").textContent=(now.getMonth()+1)+"月"+now.getDate()+"日（"+wd[now.getDay()]+"）";
+
+let store=load(KEY,{entries:[]});if(!store||!Array.isArray(store.entries))store={entries:[]};
+const persist=()=>save(KEY,store);
+
+/* ---------- AI（claude.ai上でのみ） ---------- */
+let sample=null;
+(async()=>{try{if(window.claude&&typeof window.claude.use==="function"){sample=await window.claude.use("sample");if(sample)document.body.classList.add("has-ai");rerender()}}catch(_){sample=null}})();
+const aiOn=()=>!!sample;
+function aiErr(e){const c=e&&e.code;
+  if(["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed"].includes(c)){sample=null;document.body.classList.remove("has-ai");setTimeout(rerender,1200);return "このページではAIを使えない設定になっています。"}
+  if(c==="rate_limited")return "いまは混み合っています。少し時間をおいてから試してください。";
+  if(c==="refused")return "この内容にはAIが答えられませんでした。書き方を変えて試してください。";
+  if(c==="session_expired")return "もう一度ログインしてから試してください。";
+  if(c==="cancelled")return "";
+  return "うまく受け取れませんでした。もう一度試してください。"}
+const SAFE="もし文章から、自分を傷つけたい気持ちや強い危機がうかがえる場合は、ほかの作業はせず、やさしく受けとめたうえで、医療機関・相談窓口・身近な人に相談するよう短く勧めてください。診断はしないでください。";
+
+/* ---------- 第1段階：受けとめる ---------- */
+const MOODS=["不安","緊張","怒り","イライラ","落ち込み","悲しみ","焦り","恥ずかしさ","罪悪感","さみしさ","むなしさ"];
+const BODY=["動悸","胃の締め付け","肩や首のこわばり","頭が重い","息苦しさ","手汗","顔のほてり","だるさ","眠れない"];
+const KUSE=[["決めつけ","根拠が少ないのに結論を出す"],["心の読みすぎ","相手の考えを決めてしまう"],["先読み","悪い展開を確定のように考える"],["白黒思考","0か100かで考える"],["一般化","一度のことを「いつも」にする"],["自分のせい","自分に関係のないことまで背負う"],["べき思考","〜すべきで自分や人を縛る"],["感情の決めつけ","不安だから危険だ、と感じたことを事実にする"]];
+const QS=[
+ ["evidence","そう考える根拠は？","実際にあった事実だけを挙げてみます。"],
+ ["counter","そうではない根拠は？","考えに合わない事実や、見落としているかもしれないことは？"],
+ ["friend","友人が同じ状況なら、何と声をかける？","大切な人が同じことで悩んでいたら、どう言うでしょう。"],
+ ["past","以前、似たことがあったときは？","そのとき実際にどうなったか。どう乗りこえたか。"],
+ ["range","最悪・最良・いちばんありそうな展開は？","最悪だけでなく、3つ並べてみます。"],
+ ["later","1年後の自分から見たら？","今の出来事は、どのくらいの大きさに見えそうですか。"]
+];
+const STEPS=[["状況","situation"],["気分","moods"],["認知","thoughts"],["身体","body"],["行動","action"],["別の認知","alt"],["気分の変化","after"],["次の行動","next"]];
+function newDraft(){return{id:uid(),kind:"seiri",date:dkey(new Date()),situation:"",moods:[],thoughts:[],body:[],bodyText:"",action:"",answers:{},kuse:[],alt:"",next:"",step:0}}
+let draft=load(DRAFT,null);if(!draft||draft.kind!=="seiri")draft=newDraft();
+const saveDraft=()=>save(DRAFT,draft);
+const hotThought=()=>{const t=draft.thoughts.find(x=>x.hot)||draft.thoughts[0];return t?t.text:""};
+const moodLine=(ms,key)=>ms.map(m=>m.name+" "+(m[key]==null?m.before:m[key])).join("、");
+
+function stepFilled(i){const d=draft;return[
+  d.situation.trim(),d.moods.length,d.thoughts.length,d.body.length||d.bodyText.trim(),d.action.trim(),d.alt.trim(),d.moods.some(m=>m.after!=null),d.next.trim()][i]}
+
+function renderSeiri(){
+  const v=$("#v-seiri"),d=draft,i=d.step;
+  let h='<p class="lead">人から受けた刺激や出来事を、5つのコラムで整理し、別の見方を探します。一つずつ進めて大丈夫です。</p>';
+  h+='<div class="steps" role="list">'+STEPS.map((s,k)=>'<button role="listitem" data-go="'+k+'" class="'+(stepFilled(k)?"done":"")+'" '+(k===i?'aria-current="step"':"")+'><i></i>'+s[0]+'</button>').join("")+'</div>';
+  h+='<div class="stage-label">'+(i<5?"整理する（5コラム）":"見直す（認知の再構成）")+'</div>';
+  h+='<div class="step"><div class="step-head"><span class="step-no">'+(i+1)+'</span><h2>'+STEPS[i][0]+'</h2></div>';
+  if(i===0){h+='<p class="guide">いつ・どこで・誰が・何をしたか。感じたことや推測は次で書くので、ここでは事実だけを書きます。</p>'+
+    '<textarea id="f-situation" placeholder="例：朝いちばんに、同僚から慌てた様子で内線がきた。「顧客に連絡を入れたか」と聞かれた。">'+esc(d.situation)+'</textarea>'}
+  if(i===1){h+='<p class="guide">そのときの気分を選び、強さを0〜100で付けます。いくつ選んでも構いません。</p><div class="chips">'+
+    MOODS.concat(d.moods.map(m=>m.name).filter(n=>!MOODS.includes(n))).map(n=>'<button class="chip" data-mood="'+esc(n)+'" aria-pressed="'+(d.moods.some(m=>m.name===n))+'">'+esc(n)+'</button>').join("")+'</div>'+
+    '<div class="addrow"><input type="text" id="moodAdd" placeholder="ほかの気分を追加" maxlength="12"><button class="ghost" id="moodAddBtn">追加</button></div>'+
+    d.moods.map((m,k)=>'<div class="mood"><span>'+esc(m.name)+'</span><input type="range" min="0" max="100" step="10" value="'+m.before+'" data-mb="'+k+'" aria-label="'+esc(m.name)+'の強さ"><span class="v">'+m.before+'</span></div>').join("")}
+  if(i===2){h+='<p class="guide">そのとき頭に浮かんだ考えを、浮かんだ言葉のまま書きます。いちばんつらくさせた考えに印を付けてください。</p>'+
+    '<div class="addrow"><input type="text" id="thAdd" placeholder="例：責められた、ミスしたに違いない"><button class="ghost" id="thAddBtn">追加</button></div>'+
+    (d.thoughts.length?'<div>'+d.thoughts.map((t,k)=>'<div class="thought"><label><input type="radio" name="hot" data-hot="'+k+'" '+(t.hot?"checked":"")+'>いちばんつらい</label><span class="t">'+esc(t.text)+'</span><button class="x" data-thdel="'+k+'" aria-label="削除">×</button></div>').join("")+'</div>':'<p class="small muted">まだありません。入力して「追加」を押します。</p>')}
+  if(i===3){h+='<p class="guide">体に出た反応を選びます。なければ飛ばして大丈夫です。</p><div class="chips">'+
+    BODY.map(n=>'<button class="chip" data-body="'+esc(n)+'" aria-pressed="'+d.body.includes(n)+'">'+esc(n)+'</button>').join("")+'</div>'+
+    '<textarea class="short" id="f-bodyText" placeholder="ほかにあれば">'+esc(d.bodyText)+'</textarea>'}
+  if(i===4){h+='<p class="guide">そのとき、実際にどうしたか（または、どうしたくなったか）。</p><textarea id="f-action" placeholder="例：やっていた仕事を後回しにして、すぐ資料を出した。">'+esc(d.action)+'</textarea>'}
+  if(i===5){const ht=hotThought();
+    h+=(ht?'<div class="hot"><small>見直す考え</small>'+esc(ht)+'</div>':'<p class="small muted">「認知」で考えを書くと、ここに表示されます。</p>')+
+    '<p class="guide">気になる問いを開いて、答えられるものだけ書きます。全部でなくて構いません。</p>'+
+    QS.map(q=>'<details class="q'+((d.answers[q[0]]||"").trim()?" filled":"")+'"><summary>'+q[1]+'</summary><div class="body"><span class="hint small muted">'+q[2]+'</span><textarea class="short" data-ans="'+q[0]+'">'+esc(d.answers[q[0]]||"")+'</textarea></div></details>').join("")+
+    '<div class="field"><span class="lbl">当てはまりそうな考え方のクセ（任意）</span><div class="chips">'+KUSE.map(k=>'<button class="chip" data-kuse="'+k[0]+'" aria-pressed="'+d.kuse.includes(k[0])+'" title="'+k[1]+'">'+k[0]+'</button>').join("")+'</div><span class="hint" id="kuseHint">'+(d.kuse.length?d.kuse.map(n=>n+"："+KUSE.find(k=>k[0]===n)[1]).join(" ／ "):"押すと説明が出ます")+'</span></div>'+
+    '<div class="ai" data-ai hidden><span class="tag">AI</span><p class="small muted">いまの記録をもとに、AIが見直しのための問いかけと、別の見方の例を出します。答えはあくまで例です。</p><div class="btnrow"><button class="ghost" id="aiAlt">問いかけてもらう</button><button class="link" id="aiAltStop" hidden>止める</button></div><div class="ai-out" id="aiAltOut"></div></div>'+
+    '<div class="field"><label for="f-alt">別の認知</label><span class="hint">問いへの答えをふまえて、より現実に近い、バランスのよい考えを書きます。</span><textarea id="f-alt" placeholder="例：単純に確認したいだけなのかもしれない。">'+esc(d.alt)+'</textarea></div>'}
+  if(i===6){h+='<p class="guide">別の認知を考えたあと、同じ気分がどのくらいの強さになったか付け直します。</p>'+
+    (d.moods.length?d.moods.map((m,k)=>{const a=m.after==null?m.before:m.after;return'<div class="mood"><span>'+esc(m.name)+'</span><input type="range" min="0" max="100" step="10" value="'+a+'" data-ma="'+k+'" aria-label="'+esc(m.name)+'の強さ（いま）"><span class="v">'+a+'</span></div>'}).join("")+
+      '<p class="small muted">元の強さ：'+esc(moodLine(d.moods,"before"))+'</p>':'<p class="small muted">「気分」を選ぶと、ここで付け直せます。</p>')}
+  if(i===7){h+='<p class="guide">これからどうするか。小さな一歩で構いません。</p><textarea id="f-next" placeholder="例：急ぎかどうか確認してから、優先順位を決める。">'+esc(d.next)+'</textarea>'+summaryHTML(d)+
+    '<div class="btnrow"><button class="primary" id="saveSeiri">記録する</button><button class="ghost" id="toAssert">この内容で伝え方を考える</button></div><div class="toast" id="seiriToast"></div>'}
+  h+='</div>';
+  h+='<div class="nav"><button class="ghost" id="prev" '+(i===0?"disabled":"")+'>戻る</button>'+(i<7?'<button class="primary" id="next">次へ</button>':'<button class="link" id="resetSeiri">新しく書きはじめる</button>')+'</div>';
+  v.innerHTML=h;
+  showAI(v);
+}
+function summaryHTML(d){
+  if(!d.moods.length)return"";
+  return'<div class="field"><span class="lbl">気分の変化</span><div class="compare"><span></span><span class="h">はじめ</span><span class="h">いま</span>'+
+    d.moods.map(m=>{const a=m.after==null?m.before:m.after;return'<span>'+esc(m.name)+'</span><span class="bar"><i style="width:'+m.before+'%"></i></span><span class="bar after"><i style="width:'+a+'%"></i></span>'}).join("")+
+    '</div><span class="hint">'+esc(d.moods.map(m=>m.name+" "+m.before+" → "+(m.after==null?m.before:m.after)).join("　"))+'</span></div>'}
+
+function bindSeiri(){
+  const v=$("#v-seiri");
+  v.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;const d=draft;
+    if(t.dataset.go!=null){d.step=+t.dataset.go;saveDraft();renderSeiri();window.scrollTo({top:0});return}
+    if(t.id==="prev"){d.step=Math.max(0,d.step-1);saveDraft();renderSeiri();window.scrollTo({top:0});return}
+    if(t.id==="next"){d.step=Math.min(7,d.step+1);saveDraft();renderSeiri();window.scrollTo({top:0});return}
+    if(t.dataset.mood!=null){const n=t.dataset.mood,k=d.moods.findIndex(m=>m.name===n);if(k>=0)d.moods.splice(k,1);else d.moods.push({name:n,before:50,after:null});saveDraft();renderSeiri();return}
+    if(t.id==="moodAddBtn"){const n=$("#moodAdd").value.trim();if(n&&!d.moods.some(m=>m.name===n))d.moods.push({name:n,before:50,after:null});saveDraft();renderSeiri();return}
+    if(t.id==="thAddBtn"){addThought();return}
+    if(t.dataset.thdel!=null){d.thoughts.splice(+t.dataset.thdel,1);if(d.thoughts.length&&!d.thoughts.some(x=>x.hot))d.thoughts[0].hot=true;saveDraft();renderSeiri();return}
+    if(t.dataset.body!=null){const n=t.dataset.body,k=d.body.indexOf(n);if(k>=0)d.body.splice(k,1);else d.body.push(n);saveDraft();renderSeiri();return}
+    if(t.dataset.kuse!=null){const n=t.dataset.kuse,k=d.kuse.indexOf(n);if(k>=0)d.kuse.splice(k,1);else d.kuse.push(n);saveDraft();renderSeiri();return}
+    if(t.id==="aiAlt"){askAlt();return}
+    if(t.id==="aiAltStop"){altCtl&&altCtl.abort();return}
+    if(t.id==="saveSeiri"){saveSeiri();return}
+    if(t.id==="toAssert"){const e2=saveSeiri(true);startAssertFrom(e2);return}
+    if(t.id==="resetSeiri"){if(t.dataset.sure){draft=newDraft();saveDraft();renderSeiri()}else{t.dataset.sure="1";t.textContent="書きかけを消して新しくする（もう一度押す）"}return}
+  });
+  v.addEventListener("input",e=>{const t=e.target,d=draft;
+    if(t.id==="f-situation")d.situation=t.value;
+    else if(t.id==="f-bodyText")d.bodyText=t.value;
+    else if(t.id==="f-action")d.action=t.value;
+    else if(t.id==="f-alt")d.alt=t.value;
+    else if(t.id==="f-next")d.next=t.value;
+    else if(t.dataset.ans){d.answers[t.dataset.ans]=t.value;t.closest("details").classList.toggle("filled",!!t.value.trim())}
+    else if(t.dataset.mb!=null){d.moods[+t.dataset.mb].before=+t.value;t.nextElementSibling.textContent=t.value}
+    else if(t.dataset.ma!=null){d.moods[+t.dataset.ma].after=+t.value;t.nextElementSibling.textContent=t.value}
+    else return;
+    saveDraft();
+  });
+  v.addEventListener("change",e=>{const t=e.target;if(t.dataset.hot!=null){draft.thoughts.forEach((x,k)=>x.hot=k===+t.dataset.hot);saveDraft()}});
+  v.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.isComposing){if(e.target.id==="thAdd"){e.preventDefault();addThought()}if(e.target.id==="moodAdd"){e.preventDefault();$("#moodAddBtn").click()}}});
+}
+function addThought(){const n=$("#thAdd").value.trim();if(!n)return;draft.thoughts.push({text:n,hot:!draft.thoughts.length});saveDraft();renderSeiri();setTimeout(()=>{const x=$("#thAdd");x&&x.focus()},0)}
+function saveSeiri(silent){
+  const d=JSON.parse(JSON.stringify(draft));delete d.step;d.moods.forEach(m=>{if(m.after==null)m.after=m.before});d.savedAt=Date.now();
+  const k=store.entries.findIndex(x=>x.id===d.id);if(k>=0)store.entries[k]=d;else store.entries.push(d);
+  const ok=persist();
+  if(!silent){const t=$("#seiriToast");if(t)t.textContent=ok?"記録しました。「記録」タブで見返せます。":"このブラウザでは保存できませんでした。"}
+  return d}
+
+let altCtl=null;
+async function askAlt(){
+  if(!sample)return;const d=draft,out=$("#aiAltOut"),btn=$("#aiAlt"),stop=$("#aiAltStop");
+  const prompt="あなたは認知行動療法の考え方に詳しい、穏やかな聞き手です。次の記録を書いた本人が「別の認知（よりバランスのよい考え方）」を自分で見つけられるよう手伝ってください。\n"+SAFE+"\n\n# 記録\n状況：" +d.situation+"\n気分："+moodLine(d.moods,"before")+"\nいちばんつらい考え：" +hotThought()+"\nほかの考え："+d.thoughts.map(t=>t.text).join("／")+"\n身体："+d.body.concat(d.bodyText?[d.bodyText]:[]).join("、")+"\n行動："+d.action+"\n本人の答え："+QS.map(q=>(d.answers[q[0]]||"").trim()?q[1]+"→"+d.answers[q[0]]:"").filter(Boolean).join("\n")+
+    "\n\n# 書き方\n日本語で、やさしく短く。次の3つを、見出し付きで書いてください。\n【問いかけ】本人が自分で考えるための問いを3つ（箇条書き、記録の具体的な内容にふれる）\n【別の見方の例】ありうる別の考え方を2つ（箇条書き、断定せず「〜かもしれない」の形）\n【考え方のクセ】当てはまりそうなもの1〜2つと、その理由を一言（決めつけない）\n説教や励ましの長文、診断は不要です。全体で400字以内。";
+  altCtl=new AbortController();btn.disabled=true;stop.hidden=false;out.textContent="考えています…";
+  try{await sample(prompt,{signal:altCtl.signal,cache:false,onText:({text})=>{out.textContent=text}})}
+  catch(e){out.textContent=(e.text||"")+(e.text?"\n\n":"")+aiErr(e)}
+  finally{btn.disabled=false;stop.hidden=true}
+}
+
+/* ---------- 第2段階：伝える ---------- */
+const TYPES=[["aggressive","攻撃的","自分の主張で相手を押す"],["passive","受け身","言えずに我慢する"],["assertive","アサーティブ","自分も相手も大切にする"]];
+const DESC=[
+ ["d","D","事実","状況の事実を、客観的に伝える","最近、会議の資料作成が私一人に偏っているように感じます"],
+ ["e","E","気持ち","自分の感情や意見を伝える","そのことで少し負担に感じています"],
+ ["s","S","提案","相手に望む行動を、具体的に伝える","今後は分担を相談できると助かります"],
+ ["c","C","結果","そうするとどうなるかを伝える（自分と相手の両方にとって）","そうすることで、より効率よく進められると思います"]];
+function newAssert(mode){return{id:uid(),kind:"assert",mode:mode||"after",date:dkey(new Date()),scene:"",other:"",feel:"",did:"",type:"",result:"",d:"",e:"",s:"",c:"",reflect:"",goal:"",from:null}}
+let ad=load("kokoro-note-assert-draft",null);if(!ad||ad.kind!=="assert")ad=newAssert("after");
+const saveAD=()=>save("kokoro-note-assert-draft",ad);
+let chat=[],chatBusy=false,chatCtl=null;
+const lastGoal=()=>{const a=store.entries.filter(x=>x.kind==="assert"&&x.goal&&x.goal.trim()&&x.id!==ad.id).sort((a,b)=>(b.savedAt||0)-(a.savedAt||0))[0];return a?a.goal:""};
+const descText=()=>DESC.map(x=>(ad[x[0]]||"").trim()).filter(Boolean).join("\n");
+
+function startAssertFrom(e){
+  ad=newAssert("before");ad.from=e.id;ad.scene=e.situation;ad.other=e.situation;
+  ad.feel=[moodLine(e.moods,"before"),hotThought()?"（考え："+hotThought()+"）":""].join(" ").trim();
+  ad.d=e.situation;ad.e=e.moods.length?"正直に言うと、"+e.moods.map(m=>m.name).join("や")+"を感じています。":"";ad.s=e.next;
+  saveAD();chat=[];show("assert");window.scrollTo({top:0})}
+
+function renderAssert(){
+  const v=$("#v-assert"),a=ad,after=a.mode==="after",g=lastGoal();
+  let h='<p class="lead">人とのやりとりを振り返り、DESC法で「自分も相手も大切にする伝え方」を練習します。</p>';
+  h+='<div class="seg" role="group" aria-label="使い方"><button data-mode="after" aria-pressed="'+after+'">伝えたあとの振り返り</button><button data-mode="before" aria-pressed="'+!after+'">これから伝える準備</button></div>';
+  if(g)h+='<div class="banner"><b>前回の改善目標</b><br>'+esc(g)+'</div>';
+  if(a.from)h+='<p class="small muted">「受けとめる」の記録から下書きを入れています。自由に書き直してください。</p>';
+  const F=(id,label,ph,hint,cls)=>'<div class="field"><label for="a-'+id+'">'+label+'</label>'+(hint?'<span class="hint">'+hint+'</span>':"")+'<textarea id="a-'+id+'" class="'+(cls||"short")+'" placeholder="'+esc(ph)+'">'+esc(a[id])+'</textarea></div>';
+  h+=F("scene","対象の場面","例：担当者が、興味の低い面接案件をいくつか持ってきてくれた。");
+  h+=F("other","相手の言動（事実）","例：「少し興味があるだけでも良いので、面接されますか？」と聞かれた。","言われたこと・されたことを、そのまま書きます。");
+  h+=F("feel","自分の感じた気持ち","例：あまり興味がない。予定を詰めたくない。でも普段頑張ってくれているので申し訳ない。");
+  if(after){
+    h+=F("did","実際にとった対応","例：興味が低い案件も、面接を申し込んだ。");
+    h+='<div class="field"><span class="lbl">その対応は、どのタイプに近い？</span><div class="types">'+TYPES.map(t=>'<button data-type="'+t[0]+'" aria-pressed="'+(a.type===t[0])+'"><b>'+t[1]+'</b><span>'+t[2]+'</span></button>').join("")+'</div></div>';
+    h+=F("result","結果（状況・関係性への影響）","例：関係性は維持できた。");
+  }
+  h+='<div class="field"><h3>'+(after?"アサーティブ表現の練習（DESC法）":"伝え方をつくる（DESC法）")+'</h3><span class="hint">'+(after?"もう一度伝えるとしたら、どう言うか。":"相手に伝える言葉を、4つに分けて準備します。")+'</span></div>';
+  h+='<div class="desc">'+DESC.map(x=>'<div class="k">'+x[1]+'<small>'+x[2]+'</small></div><div class="field"><span class="hint">'+x[3]+'</span><textarea class="short" id="a-'+x[0]+'" placeholder="例：'+esc(x[4])+'">'+esc(a[x[0]])+'</textarea></div>').join("")+'</div>';
+  const pv=descText();
+  h+='<div class="field"><span class="lbl">つなげて読むと</span><div class="preview" id="preview">'+(pv?esc(pv):'<span class="muted small">D〜Cを書くと、ここに伝える文がまとまります。</span>')+'</div><div class="btnrow"><button class="ghost" id="copyDesc">文をコピー</button><span class="small muted" id="copyNote"></span></div></div>';
+  h+='<div class="ai" data-ai hidden><span class="tag">AI</span><p class="small muted">DESCへの助言をもらったり、AIに相手役になってもらって練習したりできます。</p>'+
+    '<div class="btnrow"><button class="ghost" id="aiDesc">DESCに助言をもらう</button><button class="ghost" id="rpStart">相手役で練習する</button></div><div class="ai-out" id="aiDescOut"></div>'+
+    '<div id="rp" '+(chat.length?"":"hidden")+'><div class="chat" id="chatBox">'+chat.map(m=>'<div class="msg '+(m.role==="assistant"?(m.coach?"coach":"them"):"me")+'">'+esc(m.content)+'</div>').join("")+'</div>'+
+    '<div class="addrow"><input type="text" id="rpIn" placeholder="相手に伝える言葉を入力"><button class="ghost" id="rpSend">送る</button></div>'+
+    '<div class="btnrow"><button class="link" id="rpCoach">練習を終えて振り返る</button><button class="link" id="rpReset">最初から</button><button class="link" id="rpStop" hidden>止める</button></div></div></div>';
+  h+=F("reflect","振り返り・気づき","例：気を遣っているようで、結果的に相手を混乱させていたかもしれない。","","");
+  h+=F("goal","今後に向けた改善目標","例：目先の申し訳なさよりも、結果を考える。","次に記録を書くとき、いちばん上に表示されます。");
+  h+='<div class="btnrow"><button class="primary" id="saveAssert">記録する</button><button class="link" id="resetAssert">新しく書きはじめる</button></div><div class="toast" id="assertToast"></div>';
+  v.innerHTML=h;showAI(v);
+  const cb=$("#chatBox");if(cb)cb.scrollTop=cb.scrollHeight;
+}
+function bindAssert(){
+  const v=$("#v-assert");
+  v.addEventListener("input",e=>{const t=e.target;if(!t.id||!t.id.startsWith("a-"))return;ad[t.id.slice(2)]=t.value;saveAD();
+    if("desc".includes(t.id.slice(2))&&t.id.length===3){const pv=descText(),p=$("#preview");p.innerHTML=pv?esc(pv):'<span class="muted small">D〜Cを書くと、ここに伝える文がまとまります。</span>'}});
+  v.addEventListener("click",async e=>{const t=e.target.closest("button");if(!t)return;
+    if(t.dataset.mode){ad.mode=t.dataset.mode;saveAD();renderAssert();return}
+    if(t.dataset.type){ad.type=ad.type===t.dataset.type?"":t.dataset.type;saveAD();renderAssert();return}
+    if(t.id==="copyDesc"){const s=descText(),n=$("#copyNote");if(!s)return;try{await navigator.clipboard.writeText(s);n.textContent="コピーしました"}catch(_){const r=document.createRange();r.selectNodeContents($("#preview"));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);n.textContent="文を選択しました。コピーしてください"}return}
+    if(t.id==="saveAssert"){const a=JSON.parse(JSON.stringify(ad));a.savedAt=Date.now();const k=store.entries.findIndex(x=>x.id===a.id);if(k>=0)store.entries[k]=a;else store.entries.push(a);const ok=persist();$("#assertToast").textContent=ok?"記録しました。":"このブラウザでは保存できませんでした。";return}
+    if(t.id==="resetAssert"){if(t.dataset.sure){ad=newAssert(ad.mode);chat=[];saveAD();renderAssert();window.scrollTo({top:0})}else{t.dataset.sure="1";t.textContent="書きかけを消して新しくする（もう一度押す）"}return}
+    if(t.id==="aiDesc"){askDesc();return}
+    if(t.id==="rpStart"){chat=[];$("#rp").hidden=false;rpTurn(true);return}
+    if(t.id==="rpSend"){rpSend();return}
+    if(t.id==="rpCoach"){rpCoach();return}
+    if(t.id==="rpReset"){chatCtl&&chatCtl.abort();chat=[];renderAssert();return}
+    if(t.id==="rpStop"){chatCtl&&chatCtl.abort();return}
+  });
+  v.addEventListener("keydown",e=>{if(e.target.id==="rpIn"&&e.key==="Enter"&&!e.isComposing){e.preventDefault();rpSend()}});
+}
+const ctxText=()=>"場面："+ad.scene+"\n相手の言動："+ad.other+"\n本人の気持ち："+ad.feel+(ad.mode==="after"?"\n実際の対応："+ad.did+"\n結果："+ad.result:"")+"\nDESC\nD（事実）："+ad.d+"\nE（気持ち）："+ad.e+"\nS（提案）："+ad.s+"\nC（結果）："+ad.c;
+async function askDesc(){
+  if(!sample)return;const out=$("#aiDescOut"),btn=$("#aiDesc");
+  const prompt="あなたはアサーション・トレーニングのやさしいコーチです。アサーションとは「自分も相手も大切にする自己表現」です。DESC法は D=状況の事実を客観的に、E=自分の感情や意見を、S=相手に望む行動を具体的に、C=期待される結果を伝える方法です。\n"+SAFE+"\n\n# 本人の記録\n"+ctxText()+
+   "\n\n# 書き方\n日本語で、短く具体的に。次の見出しで書いてください。\n【よいところ】1〜2点\n【整えるとよいところ】D・E・S・Cのうち気になる点を最大3つ（Dに解釈が混じっていないか、Eが相手を責める言い方になっていないか、Sが具体的か、Cが相手にとっての良さも含むか、などの観点で）\n【言い換え例】そのまま声に出せる自然な一続きの文を1つ（本人の意図は変えない）\n全体で350字以内。";
+  btn.disabled=true;out.textContent="考えています…";
+  try{await sample(prompt,{cache:false,onText:({text})=>{out.textContent=text}})}catch(e){out.textContent=(e.text||"")+(e.text?"\n\n":"")+aiErr(e)}finally{btn.disabled=false}
+}
+const RP_RULES=()=>"これから、アサーションの練習のためのロールプレイをします。あなたは、下の場面に出てくる「相手」の役を演じてください。\n- 相手として自然な日本語の話し言葉で、1〜3文で返す。\n- 現実にいそうな反応をする（すぐに折れすぎず、理不尽すぎもしない）。\n- 役の外の解説やアドバイスはしない。かっこ書きの説明も付けない。\n- "+SAFE+"\n\n# 場面\n"+ctxText()+"\n\n最初は、相手の言動（事実）にあたる一言から始めてください。";
+function rpRender(){const cb=$("#chatBox");if(!cb)return;cb.innerHTML=chat.map(m=>'<div class="msg '+(m.role==="assistant"?(m.coach?"coach":"them"):"me")+'">'+esc(m.content)+'</div>').join("");cb.scrollTop=cb.scrollHeight}
+async function rpTurn(first){
+  if(!sample||chatBusy)return;chatBusy=true;chatCtl=new AbortController();$("#rpStop").hidden=false;
+  const turns=[{role:"user",content:RP_RULES()}].concat(chat.filter(m=>!m.coach).map(m=>({role:m.role,content:m.content})));
+  if(first)turns.push({role:"user",content:"（始めてください）"});
+  const bubble={role:"assistant",content:"…"};chat.push(bubble);rpRender();
+  try{const r=await sample(turns.length>1&&turns[turns.length-1].role==="user"?turns:turns.concat([{role:"user",content:"（続けてください）"}]),{cache:false,modelTier:"quick",signal:chatCtl.signal,onText:({text})=>{bubble.content=text;rpRender()}});bubble.content=r.text}
+  catch(e){bubble.content=e.text||"";if(!bubble.content)chat.pop();const m=aiErr(e);if(m)chat.push({role:"assistant",coach:true,content:m})}
+  finally{chatBusy=false;const s=$("#rpStop");if(s)s.hidden=true;rpRender()}
+}
+function rpSend(){const i=$("#rpIn");const s=i.value.trim();if(!s||chatBusy)return;i.value="";chat.push({role:"user",content:s});rpRender();rpTurn(false)}
+async function rpCoach(){
+  if(!sample||chatBusy||!chat.some(m=>m.role==="user"))return;chatBusy=true;
+  const log=chat.filter(m=>!m.coach).map(m=>(m.role==="user"?"本人：":"相手：")+m.content).join("\n");
+  const prompt="あなたはアサーション・トレーニングのやさしいコーチです。次のロールプレイで、本人の発言を振り返ってください。\n"+SAFE+"\n\n# 場面\n"+ctxText()+"\n\n# やりとり\n"+log+"\n\n# 書き方\n日本語で短く。【伝え方のタイプ】攻撃的・受け身・アサーティブのどれに近かったか（理由を一言）／【よかった点】1〜2点／【次に試すとよい一言】1文。全体で250字以内。";
+  const bubble={role:"assistant",coach:true,content:"振り返っています…"};chat.push(bubble);rpRender();
+  try{await sample(prompt,{cache:false,onText:({text})=>{bubble.content=text;rpRender()}})}catch(e){bubble.content=(e.text||"")+aiErr(e)}finally{chatBusy=false;rpRender()}
+}
+
+/* ---------- 学ぶ ---------- */
+const PRACTICE=[
+ {title:"断る",scene:"今週はとても忙しい。そんなとき、同僚から「資料作成を手伝ってほしい」と頼まれた。",
+  opts:[["passive","……うん、いいよ。大丈夫。","あとで不満を感じたり、負担が大きくなりすぎたりしやすい言い方です。"],
+        ["aggressive","いや無理。こっちも忙しいの見ればわかるでしょ。","断ること自体はできていますが、相手を責める言い方になっています。"],
+        ["assertive","今週はすでに予定が詰まっていて、正直余裕がない状態です。別の人に相談してみるのはどうでしょうか。そのほうがお互い無理なく進められると思います。","事実・気持ち・提案・結果（DESC）がそろった、アサーティブな断り方です。"]]},
+ {title:"意見の違いを伝える",scene:"会議で、自分と違う意見が出た。",
+  opts:[["aggressive","その案はちょっと現実的じゃないと思います。","相手の案を否定することから入っていて、相手が受け取りにくくなります。"],
+        ["assertive","〇〇さんの案も面白いと思います。一方で、私はこういう視点もあるのではと考えています。皆さんはどう思われますか？","相手を尊重しながら自分の意見も伝え、話し合いにつなげています。"],
+        ["passive","（違うと思うけれど、黙っておく）","その場は穏やかでも、自分の考えが伝わらず、もやもやが残りやすくなります。"]]},
+ {title:"感謝を伝える",scene:"昨日、仕事が間に合いそうになかったとき、同僚がフォローしてくれた。",
+  opts:[["assertive","昨日のフォロー、すごく助かりました。おかげで間に合いました。ありがとうございます。","何が助かったか、どうなったかまで具体的に伝えています。アサーションは、ポジティブな気持ちを伝えることも含みます。"],
+        ["passive","（照れくさいので、特に何も言わない）","気持ちがあっても、伝えなければ相手には届きません。"],
+        ["aggressive","助かったけど、もっと早く声をかけてくれたらよかったのに。","感謝のあとに相手への不満が続き、感謝が伝わりにくくなっています。"]]}
+];
+const TYPE_LABEL={aggressive:"攻撃的",passive:"受け身",assertive:"アサーティブ"};
+const answered={};
+function renderLearn(){
+  const v=$("#v-learn");
+  let h='<div class="section"><h2>アサーションとは</h2><p>「自分も相手も大切にする自己表現の方法」のことです。自分の意見や感情、要求などを正直かつ率直に、しかし攻撃的にならず、相手の権利も尊重しながら伝えます。</p><p class="small muted">目的：ストレスや誤解を減らす／対等で健康的な人間関係を築く／自己肯定感を高める</p></div>';
+  h+='<div class="section"><h2>3つのタイプ</h2><div class="tcards">'+
+    '<div class="tcard ag"><b>攻撃的</b><span>自分の意見・権利を主張しすぎて、相手を傷つける。</span><q>そんなことも分からないの？</q></div>'+
+    '<div class="tcard pa"><b>受け身</b><span>自分の気持ちを言えずに、我慢してしまう。</span><q>……（本当は嫌だけど断れない）</q></div>'+
+    '<div class="tcard as"><b>アサーティブ</b><span>自分も相手も尊重した伝え方ができる。</span><q>その案もいいと思いますが、私はこう考えています</q></div></div></div>';
+  h+='<div class="section"><h2>DESC法</h2><div class="scroll"><table class="table"><thead><tr><th>ステップ</th><th>内容</th><th>例</th></tr></thead><tbody>'+
+    DESC.map(x=>'<tr><th>'+x[1]+'（'+x[2]+'）</th><td>'+x[3]+'</td><td>「'+x[4]+'」</td></tr>').join("")+'</tbody></table></div></div>';
+  h+='<div class="section"><h2>練習：どの言い方がアサーティブ？</h2><p class="small muted">場面を読んで、アサーティブだと思う言い方を選びます。</p>'+
+    PRACTICE.map((p,pi)=>{const a=answered[pi];return'<div class="field"><h3>'+(pi+1)+'. '+p.title+'</h3><p class="small">'+esc(p.scene)+'</p><div class="opts">'+
+      p.opts.map((o,oi)=>{let cls="";if(a!=null){if(o[0]==="assertive")cls="right";else if(oi===a)cls="wrong"}
+        return'<button class="opt '+cls+'" data-pq="'+pi+'" data-po="'+oi+'">'+esc(o[1])+(a!=null?'<span class="lab">'+TYPE_LABEL[o[0]]+'：'+esc(o[2])+'</span>':"")+'</button>'}).join("")+'</div></div>'}).join("")+
+    '<button class="ghost" id="toAssertPractice">自分の場面で練習する</button></div>';
+  h+='<div class="section"><h2>トレーニングの進め方</h2><ol class="steplist"><li>理論を知る（このページ）</li><li>自分のクセを知る（「伝える」でタイプを選ぶと「記録」に傾向が出ます）</li><li>DESC法で表現を練習する（「伝える」）</li><li>ロールプレイで実践する'+(aiOn()?'（「伝える」のAI相手役）':'（家族や信頼できる人と）')+'</li><li>振り返る（「伝える」の振り返り・改善目標）</li></ol><p class="small muted">一度で身につくものではないので、日常で少しずつ繰り返すのがポイントです。</p></div>';
+  v.innerHTML=h;
+}
+function bindLearn(){$("#v-learn").addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+  if(t.dataset.pq!=null){answered[+t.dataset.pq]=+t.dataset.po;renderLearn();return}
+  if(t.id==="toAssertPractice"){show("assert");window.scrollTo({top:0})}})}
+
+/* ---------- 記録 ---------- */
+let logFilter="all",confirmDel=null;
+function renderLog(){
+  const v=$("#v-log"),E=store.entries.slice().sort((a,b)=>(b.savedAt||0)-(a.savedAt||0));
+  const as=E.filter(x=>x.kind==="assert"&&x.type),cnt={aggressive:0,passive:0,assertive:0};as.forEach(x=>cnt[x.type]++);
+  const se=E.filter(x=>x.kind==="seiri"&&x.moods&&x.moods.length);
+  let h='<div class="section"><h2>わたしの伝え方のクセ</h2>';
+  if(as.length){const tot=as.length;h+='<div class="tally">'+[["aggressive","var(--warn)"],["passive","var(--calm)"],["assertive","var(--good)"]].map(([k,c])=>'<i style="width:'+(cnt[k]/tot*100)+'%;background:'+c+'"></i>').join("")+'</div>'+
+    '<div class="legend"><span style="--c:var(--warn)">攻撃的 '+cnt.aggressive+'</span><span style="--c:var(--calm)">受け身 '+cnt.passive+'</span><span style="--c:var(--good)">アサーティブ '+cnt.assertive+'</span></div>'}
+  else h+='<p class="small muted">「伝える」で「伝えたあとの振り返り」を書き、タイプを選ぶと、ここに傾向が表示されます。</p>';
+  h+='</div>';
+  if(se.length){const avg=a=>Math.round(a.reduce((s,x)=>s+x,0)/a.length);const b=avg(se.map(x=>Math.max(...x.moods.map(m=>m.before)))),af=avg(se.map(x=>Math.max(...x.moods.map(m=>m.after))));
+    h+='<div class="section"><h2>受けとめたあとの変化</h2><p>いちばん強い気分の平均　<span style="font-family:var(--f-display);font-size:1.2rem">'+b+' → '+af+'</span>　<span class="small muted">（'+se.length+'件）</span></p></div>'}
+  h+='<div class="section"><div class="seg" role="group" aria-label="表示する記録"><button data-f="all" aria-pressed="'+(logFilter==="all")+'">すべて</button><button data-f="seiri" aria-pressed="'+(logFilter==="seiri")+'">受けとめる</button><button data-f="assert" aria-pressed="'+(logFilter==="assert")+'">伝える</button></div><div>';
+  const list=E.filter(x=>logFilter==="all"||x.kind===logFilter);
+  if(!list.length)h+='<p class="small muted" style="padding-top:10px">まだ記録はありません。</p>';
+  list.forEach(x=>{const isS=x.kind==="seiri";const sum=isS?(x.situation||"（状況なし）"):(x.scene||x.other||"（場面なし）");
+    h+='<details class="rec"><summary><span class="d">'+fmtDate(x.date)+'</span><span class="k">'+(isS?"受けとめ":(x.mode==="before"?"伝える準備":"振り返り"))+'</span><span class="s">'+esc(sum)+'</span></summary><dl>';
+    const row=(k,val)=>val&&String(val).trim()?'<dt>'+k+'</dt><dd>'+esc(val)+'</dd>':"";
+    if(isS){h+=row("状況",x.situation)+row("気分",x.moods.map(m=>m.name+" "+m.before+" → "+m.after).join("\n"))+row("認知",x.thoughts.map(t=>(t.hot?"● ":"")+t.text).join("\n"))+row("身体",x.body.concat(x.bodyText?[x.bodyText]:[]).join("、"))+row("行動",x.action)+
+      QS.map(q=>row(q[1],x.answers&&x.answers[q[0]])).join("")+row("考え方のクセ",(x.kuse||[]).join("、"))+row("別の認知",x.alt)+row("次の行動",x.next)}
+    else{h+=row("場面",x.scene)+row("相手の言動",x.other)+row("気持ち",x.feel)+row("実際の対応",x.did)+row("タイプ",TYPE_LABEL[x.type])+row("結果",x.result)+DESC.map(k=>row(k[1]+"（"+k[2]+"）",x[k[0]])).join("")+row("振り返り",x.reflect)+row("改善目標",x.goal)}
+    h+='</dl><div class="btnrow" style="padding-top:8px">'+(isS?'<button class="link" data-edit="'+x.id+'">続きを書く</button><button class="link" data-toassert="'+x.id+'">伝え方を考える</button>':'<button class="link" data-edit="'+x.id+'">続きを書く</button>')+
+      (confirmDel===x.id?'<span class="confirm">削除しますか？<button class="ghost" data-delok="'+x.id+'">削除する</button><button class="link" data-delno="1">やめる</button></span>':'<button class="link" data-del="'+x.id+'">削除</button>')+'</div></details>'});
+  h+='</div></div>';
+  h+='<div class="section"><h2>データの控え</h2><p class="note">記録はこの端末のこのブラウザだけに保存されます。ブラウザのデータ削除や機種変更で消えるので、ときどき控えを取ってください。</p><div class="btnrow"><button class="ghost" id="exp">控えを表示してコピー</button><button class="ghost" id="impOpen">控えから戻す</button></div><textarea id="bk" hidden></textarea><button class="ghost" id="imp" hidden>この内容で戻す</button><div class="toast" id="bkToast"></div></div>';
+  v.innerHTML=h;
+}
+function bindLog(){
+  const v=$("#v-log");
+  v.addEventListener("click",async e=>{const t=e.target.closest("button");if(!t)return;
+    if(t.dataset.f){logFilter=t.dataset.f;renderLog();return}
+    if(t.dataset.del){confirmDel=t.dataset.del;const open=t.closest("details");renderLog();reopen(confirmDel);return}
+    if(t.dataset.delno){const id=confirmDel;confirmDel=null;renderLog();reopen(id);return}
+    if(t.dataset.delok){store.entries=store.entries.filter(x=>x.id!==t.dataset.delok);confirmDel=null;persist();renderLog();return}
+    if(t.dataset.edit){const x=store.entries.find(y=>y.id===t.dataset.edit);if(!x)return;
+      if(x.kind==="seiri"){draft=JSON.parse(JSON.stringify(x));draft.step=0;saveDraft();show("seiri")}else{ad=JSON.parse(JSON.stringify(x));chat=[];saveAD();show("assert")}window.scrollTo({top:0});return}
+    if(t.dataset.toassert){const x=store.entries.find(y=>y.id===t.dataset.toassert);if(x){const keep=draft;draft=x;startAssertFrom(x);draft=keep}return}
+    if(t.id==="exp"){const s=JSON.stringify(store),ta=$("#bk");ta.hidden=false;ta.value=s;$("#imp").hidden=true;try{await navigator.clipboard.writeText(s);$("#bkToast").textContent="コピーしました。メモアプリなどに貼って保管してください。"}catch(_){ta.select();$("#bkToast").textContent="下の文字を全選択してコピーしてください。"}return}
+    if(t.id==="impOpen"){const ta=$("#bk");ta.hidden=false;ta.value="";ta.placeholder="控えの文字をここに貼り付け";$("#imp").hidden=false;$("#bkToast").textContent="";return}
+    if(t.id==="imp"){try{const d=JSON.parse($("#bk").value);if(!d||!Array.isArray(d.entries))throw 0;const ids=new Set(store.entries.map(x=>x.id));let n=0;d.entries.forEach(x=>{if(x&&x.id&&!ids.has(x.id)){store.entries.push(x);n++}});persist();renderLog();$("#bkToast").textContent=n+"件を戻しました。"}catch(_){$("#bkToast").textContent="読み込めませんでした。コピーした文字がすべて貼り付けられているか確認してください。"}return}
+  });
+}
+function reopen(id){if(!id)return;const b=document.querySelector('[data-del="'+id+'"],[data-delok="'+id+'"]');const d=b&&b.closest("details");if(d)d.open=true}
+
+/* ---------- 共通 ---------- */
+let current="seiri";
+function showAI(root){root.querySelectorAll("[data-ai]").forEach(el=>el.hidden=!aiOn())}
+function show(name){current=name;document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===name));
+  ["seiri","assert","learn","log"].forEach(n=>$("#v-"+n).hidden=n!==name);rerender()}
+function rerender(){({seiri:renderSeiri,assert:renderAssert,learn:renderLearn,log:renderLog})[current]()}
+document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b)show(b.dataset.v)});
+bindSeiri();bindAssert();bindLearn();bindLog();
+renderSeiri();
+if("serviceWorker" in navigator&&location.protocol==="https:"){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+})();
+</script>
+</body>
+</html>
