@@ -344,8 +344,9 @@ function addThought(){const n=$("#thAdd").value.trim();if(!n)return;draft.though
 function saveSeiri(silent){
   const d=JSON.parse(JSON.stringify(draft));delete d.step;d.moods.forEach(m=>{if(m.after==null)m.after=m.before});d.savedAt=Date.now();
   const k=store.entries.findIndex(x=>x.id===d.id);if(k>=0)store.entries[k]=d;else store.entries.push(d);
-  const ok=persist();
-  if(!silent){const t=$("#seiriToast");if(t)t.textContent=ok?"記録しました。「記録」タブで見返せます。":"このブラウザでは保存できませんでした。"}
+  const ok=persist();const t=$("#seiriToast");
+  if(!silent&&t)t.textContent=ok?"記録しました。「記録」タブで見返せます。":"このブラウザでは保存できませんでした。";
+  autoSync(d,silent?null:t);
   return d}
 
 let altCtl=null;
@@ -417,7 +418,7 @@ function bindAssert(){
     if(t.dataset.mode){ad.mode=t.dataset.mode;saveAD();renderAssert();return}
     if(t.dataset.type){ad.type=ad.type===t.dataset.type?"":t.dataset.type;saveAD();renderAssert();return}
     if(t.id==="copyDesc"){const s=descText(),n=$("#copyNote");if(!s)return;try{await navigator.clipboard.writeText(s);n.textContent="コピーしました"}catch(_){const r=document.createRange();r.selectNodeContents($("#preview"));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);n.textContent="文を選択しました。コピーしてください"}return}
-    if(t.id==="saveAssert"){const a=JSON.parse(JSON.stringify(ad));a.savedAt=Date.now();const k=store.entries.findIndex(x=>x.id===a.id);if(k>=0)store.entries[k]=a;else store.entries.push(a);const ok=persist();$("#assertToast").textContent=ok?"記録しました。":"このブラウザでは保存できませんでした。";return}
+    if(t.id==="saveAssert"){const a=JSON.parse(JSON.stringify(ad));a.savedAt=Date.now();const k=store.entries.findIndex(x=>x.id===a.id);if(k>=0)store.entries[k]=a;else store.entries.push(a);const ok=persist();const tt=$("#assertToast");tt.textContent=ok?"記録しました。":"このブラウザでは保存できませんでした。";autoSync(a,tt);return}
     if(t.id==="resetAssert"){if(t.dataset.sure){ad=newAssert(ad.mode);chat=[];saveAD();renderAssert();window.scrollTo({top:0})}else{t.dataset.sure="1";t.textContent="書きかけを消して新しくする（もう一度押す）"}return}
     if(t.id==="aiDesc"){askDesc();return}
     if(t.id==="rpStart"){chat=[];$("#rp").hidden=false;rpTurn(true);return}
@@ -519,6 +520,24 @@ function renderLog(){
     h+='</dl><div class="btnrow" style="padding-top:8px">'+(isS?'<button class="link" data-edit="'+x.id+'">続きを書く</button><button class="link" data-toassert="'+x.id+'">伝え方を考える</button>':'<button class="link" data-edit="'+x.id+'">続きを書く</button>')+
       (confirmDel===x.id?'<span class="confirm">削除しますか？<button class="ghost" data-delok="'+x.id+'">削除する</button><button class="link" data-delno="1">やめる</button></span>':'<button class="link" data-del="'+x.id+'">削除</button>')+'</div></details>'});
   h+='</div></div>';
+  h+='<div class="section"><h2>スプレッドシート用に書き出す</h2><p class="note">表の形でコピーします。Googleスプレッドシート・Excel・Numbersに貼り付けると、列ごとに分かれます。セルの中の改行は「／」に置きかえています。</p>'+
+    '<div class="btnrow"><button class="ghost" data-tsv="seiri">受けとめるをコピー</button><button class="ghost" data-tsv="assert">伝えるをコピー</button></div>'+
+    '<label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tsvHead" checked style="accent-color:var(--accent)">1行目に項目名を入れる（今あるシートに貼り足すときは外す）</label>'+
+    '<textarea id="tsvOut" hidden></textarea><div class="toast" id="tsvToast"></div></div>';
+  if(canSync())h+='<div class="section"><h2>Googleスプレッドシートに自動保存</h2><p class="note">設定すると、「記録する」を押すたびに、あなたのGoogleスプレッドシートへ送ります。同じ記録を書き直したときは、その行が上書きされます。</p>'+
+    '<details class="q"><summary>設定のしかた（最初に1回だけ）</summary><div class="body"><ol class="steplist">'+
+    '<li>パソコンで、Googleスプレッドシートを新しく作る（名前は自由。例：こころノート記録）</li>'+
+    '<li>メニューの「拡張機能」→「Apps Script」を開く</li>'+
+    '<li>下の「スクリプトをコピー」を押し、Apps Scriptの画面に最初からある文字をすべて消して貼り付け、保存する</li>'+
+    '<li>右上の「デプロイ」→「新しいデプロイ」→ 種類の選択（歯車）で「ウェブアプリ」を選ぶ</li>'+
+    '<li>「次のユーザーとして実行」は「自分」、「アクセスできるユーザー」は「全員」にして「デプロイ」</li>'+
+    '<li>Googleアカウントへのアクセスの許可を求められたら許可する（「Googleで確認されていません」と出たら「詳細」→「（安全ではないページ）に移動」→「許可」）</li>'+
+    '<li>表示された「ウェブアプリのURL」をコピーして、下の欄に貼り、「テスト送信」を押す</li>'+
+    '</ol><div class="btnrow"><button class="ghost" id="copyGs">スクリプトをコピー</button></div><textarea id="gsOut" hidden></textarea><span class="hint" id="gsNote"></span></div></details>'+
+    '<div class="field"><label for="syncUrl">ウェブアプリのURL</label><input type="text" id="syncUrl" placeholder="https://script.google.com/macros/s/…/exec" value="'+esc(sync.url)+'" autocomplete="off" spellcheck="false"><span class="hint">このURLを知っている人は記録を書き込めてしまうので、人に教えないでください。</span></div>'+
+    '<label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="syncOn" '+(sync.on?"checked":"")+' style="accent-color:var(--accent)">記録するたびに自動で送る</label>'+
+    '<div class="btnrow"><button class="ghost" id="syncTest">テスト送信</button><button class="ghost" id="syncAll">これまでの記録をまとめて送る</button></div>'+
+    '<div class="toast" id="syncToast">'+(sync.last?"最後に送った日時："+esc(sync.last):"")+'</div></div>';
   h+='<div class="section"><h2>データの控え</h2><p class="note">記録はこの端末のこのブラウザだけに保存されます。ブラウザのデータ削除や機種変更で消えるので、ときどき控えを取ってください。</p><div class="btnrow"><button class="ghost" id="exp">控えを表示してコピー</button><button class="ghost" id="impOpen">控えから戻す</button></div><textarea id="bk" hidden></textarea><button class="ghost" id="imp" hidden>この内容で戻す</button><div class="toast" id="bkToast"></div></div>';
   v.innerHTML=h;
 }
@@ -532,12 +551,59 @@ function bindLog(){
     if(t.dataset.edit){const x=store.entries.find(y=>y.id===t.dataset.edit);if(!x)return;
       if(x.kind==="seiri"){draft=JSON.parse(JSON.stringify(x));draft.step=0;saveDraft();show("seiri")}else{ad=JSON.parse(JSON.stringify(x));chat=[];saveAD();show("assert")}window.scrollTo({top:0});return}
     if(t.dataset.toassert){const x=store.entries.find(y=>y.id===t.dataset.toassert);if(x){const keep=draft;draft=x;startAssertFrom(x);draft=keep}return}
+    if(t.dataset.tsv){const r=tsvOf(t.dataset.tsv,$("#tsvHead").checked),out=$("#tsvToast"),ta=$("#tsvOut");
+      if(!r.n){out.textContent="まだ記録がありません。";return}
+      try{await navigator.clipboard.writeText(r.text);ta.hidden=true;out.textContent=r.n+"件をコピーしました。スプレッドシートの貼り付けたい最初のセルを選んで、貼り付けてください。"}
+      catch(_){ta.hidden=false;ta.value=r.text;ta.select();out.textContent="下の文字を全選択してコピーし、スプレッドシートに貼り付けてください。"}return}
+    if(t.id==="syncTest"||t.id==="syncAll"){const out=$("#syncToast");sync.url=$("#syncUrl").value.trim();save(SYNC_KEY,sync);
+      if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(sync.url)){out.textContent="URLの形が違うようです。「https://script.google.com/macros/s/」で始まり「/exec」で終わるURLを貼ってください。";return}
+      const list=t.id==="syncAll"?store.entries.slice():[{id:"test",kind:"seiri",date:dkey(new Date()),situation:"テスト送信です。この行は消して構いません。",moods:[],thoughts:[],body:[],bodyText:"",action:"",answers:{},kuse:[],alt:"",next:"",savedAt:Date.now()}];
+      if(!list.length){out.textContent="まだ記録がありません。";return}
+      t.disabled=true;out.textContent="送っています…";
+      try{await pushRows(list);out.textContent=(t.id==="syncAll"?list.length+"件を送りました。":"テストの行を送りました。")+"スプレッドシートを開いて、行が入っているか確かめてください。"}
+      catch(_){out.textContent="送れませんでした。電波の状態と、URLが正しいかを確認してください。"}
+      finally{t.disabled=false}return}
+    if(t.id==="copyGs"){const n=$("#gsNote"),ta=$("#gsOut");if(!gsText){n.textContent="スクリプトを読み込めませんでした。電波のある所で開き直してください。";return}
+      try{await navigator.clipboard.writeText(gsText);n.textContent="コピーしました。"}catch(_){ta.hidden=false;ta.value=gsText;ta.select();n.textContent="下の文字を全選択してコピーしてください。"}return}
     if(t.id==="exp"){const s=JSON.stringify(store),ta=$("#bk");ta.hidden=false;ta.value=s;$("#imp").hidden=true;try{await navigator.clipboard.writeText(s);$("#bkToast").textContent="コピーしました。メモアプリなどに貼って保管してください。"}catch(_){ta.select();$("#bkToast").textContent="下の文字を全選択してコピーしてください。"}return}
     if(t.id==="impOpen"){const ta=$("#bk");ta.hidden=false;ta.value="";ta.placeholder="控えの文字をここに貼り付け";$("#imp").hidden=false;$("#bkToast").textContent="";return}
     if(t.id==="imp"){try{const d=JSON.parse($("#bk").value);if(!d||!Array.isArray(d.entries))throw 0;const ids=new Set(store.entries.map(x=>x.id));let n=0;d.entries.forEach(x=>{if(x&&x.id&&!ids.has(x.id)){store.entries.push(x);n++}});persist();renderLog();$("#bkToast").textContent=n+"件を戻しました。"}catch(_){$("#bkToast").textContent="読み込めませんでした。コピーした文字がすべて貼り付けられているか確認してください。"}return}
   });
 }
+document.addEventListener("change",e=>{const t=e.target;if(t.id==="syncOn"){sync.on=t.checked;sync.url=($("#syncUrl")||{value:sync.url}).value.trim();save(SYNC_KEY,sync)}if(t.id==="syncUrl"){sync.url=t.value.trim();save(SYNC_KEY,sync)}});
 function reopen(id){if(!id)return;const b=document.querySelector('[data-del="'+id+'"],[data-delok="'+id+'"]');const d=b&&b.closest("details");if(d)d.open=true}
+
+
+/* ---------- スプレッドシートへ ---------- */
+const COLS={
+ seiri:["日付","状況","気分","認知","身体","行動","別の認知","気分の変化","次の行動","問いへの答え","考え方のクセ"],
+ assert:["日付","種類","トレーニング対象場面","相手の言動（事実）","自分の感じた気持ち","実際にとった対応","タイプ","結果（状況・関係性への影響）","D（事実）","E（気持ち）","S（提案）","C（結果）","トレーニング後の振り返り・気づき","今後に向けた改善目標"]};
+const slash=k=>k.replace(/-/g,"/");
+function rowOf(x){
+  if(x.kind==="seiri")return[slash(x.date),x.situation,(x.moods||[]).map(m=>m.name+" "+m.before).join("\n"),(x.thoughts||[]).map(t=>(t.hot?"●":"")+t.text).join("\n"),
+    (x.body||[]).concat(x.bodyText?[x.bodyText]:[]).join("、"),x.action,x.alt,(x.moods||[]).map(m=>m.name+" "+(m.after==null?m.before:m.after)).join("\n"),x.next,
+    QS.map(q=>{const a=x.answers&&x.answers[q[0]];return a&&a.trim()?q[1]+" "+a:""}).filter(Boolean).join("\n"),(x.kuse||[]).join("、")];
+  return[slash(x.date),x.mode==="before"?"伝える準備":"振り返り",x.scene,x.other,x.feel,x.did,TYPE_LABEL[x.type]||"",x.result,x.d,x.e,x.s,x.c,x.reflect,x.goal]}
+const cellTSV=v=>{v=String(v==null?"":v).replace(/\t/g," ").replace(/\r?\n/g," ／ ").trim();return /^[=+\-@]/.test(v)?" "+v:v};
+function tsvOf(kind,withHead){const E=store.entries.filter(x=>x.kind===kind).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.savedAt||0)-(b.savedAt||0));
+  const lines=E.map(x=>rowOf(x).map(cellTSV).join("\t"));if(withHead)lines.unshift(COLS[kind].join("\t"));return{text:lines.join("\n"),n:E.length}}
+
+// GitHub版のみ：Googleスプレッドシートへ自動保存（Apps Script）
+const SYNC_KEY="kokoro-note-sync";
+let sync=load(SYNC_KEY,{url:"",on:false,last:""})||{url:"",on:false,last:""};
+const canSync=()=>!window.claude;
+let gsText="";if(canSync()&&location.protocol!=="file:")fetch("apps-script.gs").then(r=>r.ok?r.text():"").then(t=>{gsText=t}).catch(()=>{});
+const safeCell=v=>{v=String(v==null?"":v);return /^[=+\-@]/.test(v)?"'"+v:v};
+async function pushRows(entries){
+  if(!sync.url)throw new Error("nourl");
+  const rows=entries.map(x=>({kind:x.kind,values:[x.id].concat(rowOf(x).map(safeCell),[new Date(x.savedAt||Date.now()).toLocaleString("ja-JP")])}));
+  for(let i=0;i<rows.length;i+=40){
+    await fetch(sync.url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({rows:rows.slice(i,i+40)})})}
+  sync.last=new Date().toLocaleString("ja-JP");save(SYNC_KEY,sync)}
+function autoSync(entry,toastEl){
+  if(!canSync()||!sync.on||!sync.url)return;
+  pushRows([entry]).then(()=>{if(toastEl)toastEl.textContent+="（スプレッドシートにも送りました）"})
+    .catch(()=>{if(toastEl)toastEl.textContent+="（スプレッドシートに送れませんでした。電波のある所で「まとめて送る」を押してください）"})}
 
 /* ---------- 共通 ---------- */
 let current="seiri";
