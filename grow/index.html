@@ -157,7 +157,7 @@ const SCOL=Object.fromEntries(STRENGTHS.map(s=>[s[0],"hsl("+s[1]+",62%,62%)"]));
 const VALUE_IDEAS=["家族","パートナー","友人","仕事","学び・成長","健康","誠実さ","やさしさ","挑戦","遊び・楽しさ","人の役に立つ","自然","創ること","落ち着き","自立","感謝"];
 const MOON_HUES=[200,38,320,140,265];
 const STAGES=[[0,"光の種"],[3,"小さな玉"],[10,"ボール"],[25,"かがやくボール"],[50,"星"]];
-const STYLES=[["plain","そのまま",0],["watercolor","水彩",1],["gouache","絵本",2],["impression","印象派の筆",4],["anime","背景画",5],["pastel","パステル",6]];
+const STYLES=[["plain","そのまま",0],["anime","背景画",5],["impression","印象派の筆",4]];
 let artStyle=load("kokoro-grow-style","plain");if(!STYLES.some(x=>x[0]===artStyle))artStyle="plain";
 const STYLE_IDX=()=>(STYLES.find(x=>x[0]===artStyle)||STYLES[0])[2];
 const HOME={name:"川崎市麻生区",lat:35.6037,lon:139.5079};
