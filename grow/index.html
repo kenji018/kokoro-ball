@@ -162,6 +162,7 @@ const HOME={name:"川崎市麻生区",lat:35.6037,lon:139.5079};
 /* ---------- 記録 ---------- */
 const KEY="kokoro-grow-v1";
 let st=load(KEY,null);if(!st||!Array.isArray(st.records))st={values:[],records:[]};
+if(!Array.isArray(st.cracks))st.cracks=[];if(!st.ev)st.ev={kumori:null,lastEnd:0,marks:0};if(!st.wxlog)st.wxlog={};if(st.trial===undefined)st.trial=null;if(!st.flowers)st.flowers=0;if(!st.rainbow)st.rainbow="";
 const persist=()=>save(KEY,st);
 const points=()=>st.records.length;
 const stageIdx=()=>{let i=0;STAGES.forEach((s,k)=>{if(points()>=s[0])i=k});return i};
@@ -171,6 +172,29 @@ function formOf(){const n=points();if(n<5)return null;const c=careCounts();const
 function valueCounts(){const c={};st.values.forEach(v=>c[v]=0);st.records.forEach(r=>(r.values||[]).forEach(v=>{if(c[v]!=null)c[v]++}));return c}
 function strengthCuts(){const out=[];st.records.forEach(r=>(r.strengths||[]).forEach(s=>out.push(s)));return out}
 const rainDays=()=>st.records.filter(r=>r.tough).length;
+const TODAY=dkey(new Date());
+const dayOff=(k,n)=>{const p=k.split("-");const d=new Date(+p[0],p[1]-1,+p[2]+n);return dkey(d)};
+const hashStr=s=>{let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return((h>>>0)%10000)/10000};
+// A 金継ぎ：しんどい出来事 → ひび。お世話で金の線がのびる
+const SIZE=[["小さめ",2],["ふつう",3],["大きい",4]];
+const openCrack=()=>st.cracks.find(c=>c.prog<c.need);
+const mended=()=>st.cracks.filter(c=>c.prog>=c.need).length;
+// B 心のくもり：ときどき起きる。小さな課題で晴れる。1週間で自然に晴れる
+function evalKumori(){const ev=st.ev,k=ev.kumori;
+  if(k){if(TODAY>dayOff(k.start,6)){ev.kumori=null;ev.lastEnd=Date.now();persist()}return}
+  if(points()<3||ev.skip===TODAY)return;
+  if(Date.now()-ev.lastEnd<4*864e5)return;
+  if(hashStr("kumori"+TODAY)<.3){const care=CARE[Math.floor(hashStr("care"+TODAY)*5)][0];ev.kumori={start:TODAY,until:dayOff(TODAY,2),care};persist()}}
+// C 天気の試練：つらい天気が3日つづくと「長雨」など。記録をつづけて抜けると、虹と花
+function logWeather(){const w=wxNow();if(!w.known)return;st.wxlog[TODAY]={kind:w.kind,tough:isTough(w)};
+  const keys=Object.keys(st.wxlog).sort();if(keys.length>40)keys.slice(0,keys.length-40).forEach(k=>delete st.wxlog[k]);
+  const t3=[0,-1,-2].every(n=>{const x=st.wxlog[dayOff(TODAY,n)];return x&&x.tough});
+  let msg="";
+  if(!st.trial&&t3){const kinds=[0,-1,-2].map(n=>st.wxlog[dayOff(TODAY,n)].kind);const name=kinds.includes("snow")?"雪ごもり":kinds.some(k=>k==="rain"||k==="storm")?"長雨":"きびしい天気";st.trial={start:dayOff(TODAY,-2),name,records:0}}
+  else if(st.trial&&(!st.wxlog[TODAY].tough||TODAY>dayOff(st.trial.start,10))){if(st.trial.records>0){st.flowers+=5;st.rainbow=TODAY;msg="「"+st.trial.name+"」を乗りこえました。虹が出て、花が咲きました。"}st.trial=null}
+  persist();return msg}
+const trialOn=()=>!!st.trial;
+const kumoriOn=()=>!!st.ev.kumori;
 
 /* ---------- 天気・季節・月 ---------- */
 const SEKKI=[[1,6,"小寒"],[1,20,"大寒"],[2,4,"立春"],[2,19,"雨水"],[3,5,"啓蟄"],[3,20,"春分"],[4,4,"清明"],[4,20,"穀雨"],[5,5,"立夏"],[5,21,"小満"],[6,5,"芒種"],[6,21,"夏至"],[7,7,"小暑"],[7,23,"大暑"],[8,7,"立秋"],[8,23,"処暑"],[9,7,"白露"],[9,23,"秋分"],[10,8,"寒露"],[10,23,"霜降"],[11,7,"立冬"],[11,22,"小雪"],[12,7,"大雪"],[12,21,"冬至"]];
@@ -188,7 +212,7 @@ async function fetchWeather(){
     const r=await fetch(u,{signal:ctl.signal});if(!r.ok)throw 0;const j=await r.json();const c=j.current;
     weather={src:"live",at:Date.now(),kind:wxFromCode(c.weather_code),temp:Math.round(c.temperature_2m),wind:c.wind_speed_10m,day:c.is_day===1};save("kokoro-grow-wx",weather)}
   catch(_){if(!weather||weather.src==="live"&&Date.now()-weather.at>6*3600e3)weather={src:"none",at:Date.now(),kind:null}}
-  renderWx();if(current==="grow")renderGrow();
+  const m=logWeather();if(m)toast=m;renderWx();if(current==="grow")renderGrow();
 }
 function wxNow(){const h=new Date().getHours();const day=weather&&weather.src==="live"?weather.day:(h>=6&&h<17);
   return{kind:weather&&weather.kind||"clear",temp:weather&&weather.temp,wind:weather&&weather.wind||0,day,dusk:h>=16&&h<18||h>=5&&h<7,known:!!(weather&&weather.kind)}}
@@ -201,7 +225,9 @@ function renderWx(){const w=wxNow(),d=new Date();
 /* ---------- 世界の描画（空・地面） ---------- */
 const sky=$("#sky"),fx=$("#fx"),gl=$("#gl"),sctx=sky.getContext("2d"),fctx=fx.getContext("2d");
 let W=0,H=0,DPR=1;
-function resize(){DPR=Math.min(2,devicePixelRatio||1);const r=gl.getBoundingClientRect();W=r.width;H=r.height;[sky,fx].forEach(c=>{c.width=W*DPR;c.height=H*DPR;c.getContext("2d").setTransform(DPR,0,0,DPR,0,0)});if(renderer){renderer.setPixelRatio(DPR);renderer.setSize(W,H,false);camera.aspect=W/H;camera.updateProjectionMatrix()}}
+function resize(){const r=gl.getBoundingClientRect();W=r.width;H=r.height;DPR=renderer?1:Math.min(2,devicePixelRatio||1);
+  [sky,fx].forEach(c=>{c.width=Math.max(1,W*DPR);c.height=Math.max(1,H*DPR);c.getContext("2d").setTransform(DPR,0,0,DPR,0,0)});
+  if(renderer){const pr=Math.min(1.5,devicePixelRatio||1);renderer.setPixelRatio(pr);renderer.setSize(W,H,false);camera.aspect=W/H;camera.updateProjectionMatrix();rt.setSize(Math.round(W*pr),Math.round(H*pr));postMat.uniforms.res.value.set(Math.round(W*pr),Math.round(H*pr));postMat.uniforms.scale.value=pr}}
 const SKY={day:{clear:["#7fb2de","#dce9f2"],cloudy:["#a7b2bd","#dfe3e6"],fog:["#c3c8cc","#e8eaea"],rain:["#6f7c8a","#aeb7bf"],snow:["#b9c4cf","#eef1f4"],storm:["#4f5967","#8c96a1"]},
   night:{clear:["#0f1530","#2a3358"],cloudy:["#1b2030","#363c4c"],fog:["#2a2e36","#4a4f57"],rain:["#151a24","#2d343f"],snow:["#262e3e","#4b5466"],storm:["#0e1118","#252b36"]}};
 const groundHash=i=>{const x=Math.sin(i*127.1)*43758.5453;return x-Math.floor(x)};
@@ -217,10 +243,17 @@ function drawSky(t,w){
   if(["cloudy","rain","storm","snow","fog"].includes(w.kind)){const n=w.kind==="cloudy"?5:7;for(let i=0;i<n;i++){const x=((groundHash(i+5)*W*1.4+t*(6+w.wind*2))%(W*1.4))-W*.2,y=H*(.08+groundHash(i+11)*.3),r=40+groundHash(i+3)*50;
     const c=sctx.createRadialGradient(x,y,0,x,y,r);const col=w.day?(w.kind==="cloudy"?"255,255,255":"200,206,214"):"90,96,110";c.addColorStop(0,"rgba("+col+",.55)");c.addColorStop(1,"rgba("+col+",0)");sctx.fillStyle=c;sctx.beginPath();sctx.ellipse(x,y,r*1.6,r*.7,0,0,Math.PI*2);sctx.fill()}}
   if(w.kind==="storm"&&!reduce&&Math.sin(t*1.7)>.995){sctx.fillStyle="rgba(255,255,255,.35)";sctx.fillRect(0,0,W,H)}
+  if(trialOn()){sctx.fillStyle="rgba(20,24,36,.22)";sctx.fillRect(0,0,W,H)}
+  if(st.rainbow===TODAY&&w.day!==false){sctx.save();sctx.globalAlpha=.42;const cx=W*.5,cy=H*.95;["#e2574c","#ef9a3d","#f3d35b","#7cc177","#5aa3d8","#7a6cc9"].forEach((c,i)=>{sctx.strokeStyle=c;sctx.lineWidth=7;sctx.beginPath();sctx.arc(cx,cy,W*.62-i*7,Math.PI*1.08,Math.PI*1.92);sctx.stroke()});sctx.restore()}
   // 地面（丘）
   const gy=H*.86;sctx.beginPath();sctx.moveTo(0,H);sctx.lineTo(0,gy+10);sctx.quadraticCurveTo(W*.5,gy-18,W,gy+10);sctx.lineTo(W,H);sctx.closePath();
   const gg=sctx.createLinearGradient(0,gy-18,0,H);const gc=w.kind==="snow"?(w.day?["#e9edf1","#cdd4db"]:["#5a6272","#3a404c"]):(w.day?["#7d9478","#5d7158"]:["#26302a","#18201b"]);
   gg.addColorStop(0,gc[0]);gg.addColorStop(1,gc[1]);sctx.fillStyle=gg;sctx.fill();
+  // 乗りこえた試練の花
+  for(let i=0;i<Math.min(st.flowers,80);i++){const x=W*(.04+groundHash(i+700)*.92),yy=gy+6+groundHash(i+800)*(H-gy-10)+((x-W*.5)/(W*.5))**2*-6;
+    const hue=[350,40,55,300,20,200][i%6];sctx.fillStyle="hsl(110,30%,"+(w.day?32:18)+"%)";sctx.fillRect(x-.6,yy,1.2,6);
+    sctx.fillStyle="hsl("+hue+",70%,"+(w.day?70:42)+"%)";for(let k=0;k<5;k++){const a=k/5*Math.PI*2+i;sctx.beginPath();sctx.arc(x+Math.cos(a)*2.6,yy+Math.sin(a)*2.6,2.2,0,Math.PI*2);sctx.fill()}
+    sctx.fillStyle="#f6d77a";sctx.beginPath();sctx.arc(x,yy,1.6,0,Math.PI*2);sctx.fill()}
   // 雨の日のがんばり（地面の灯り）
   const n=rainDays();for(let i=0;i<Math.min(n,60);i++){const x=W*(.06+groundHash(i+300)*.88);const yy=gy+8+(Math.abs(x-W*.5)/(W*.5))**2*-0+groundHash(i+400)*(H-gy-14)+((x-W*.5)/(W*.5))**2*-6;
     const a=.55+.35*Math.sin(t*1.3+i);const r=2.2;const gl2=sctx.createRadialGradient(x,yy,0,x,yy,9);gl2.addColorStop(0,"rgba(255,226,160,"+(.7*a)+")");gl2.addColorStop(1,"rgba(255,226,160,0)");
@@ -235,7 +268,41 @@ function drawMoonPhase(x,y,r,age,alpha){
   sctx.arc(x,y,r,-Math.PI/2,Math.PI/2,!right);sctx.ellipse(x,y,Math.abs(c)*r,r,0,Math.PI/2,-Math.PI/2,(c>0)===right);sctx.fill();sctx.restore()}
 
 /* ---------- 3D：育つボール・価値の月・強みの面 ---------- */
-let renderer=null,scene,camera,body,bodyMat,corona,moonGroup,moons=[];
+let renderer=null,scene,camera,body,bodyMat,corona,moonGroup,moons=[],rt,postScene,postCam,postMat,skyTex,fxTex,crackGroup,haze;
+const OIL_FS=`
+precision highp float;
+uniform sampler2D tScene;uniform sampler2D tFx;uniform vec2 res;uniform float dim;uniform float scale;varying vec2 vUv;
+vec3 S(vec2 uv){vec3 c=texture2D(tScene,uv).rgb;vec4 f=texture2D(tFx,uv);return mix(c,f.rgb,f.a);}
+float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1.,0.)),f.x),mix(h(i+vec2(0.,1.)),h(i+vec2(1.,1.)),f.x),f.y);}
+void main(){
+  vec2 px=scale*2.1/res;
+  vec2 q=vUv*res/scale;
+  // 筆の向き：場所ごとに少しずつ傾いた筆で塗ったように、ずらして読む
+  float ang=n(q/38.)*6.2831;vec2 dir=vec2(cos(ang),sin(ang));
+  vec2 uv=vUv+dir*(n(q/9.)-.5)*px*1.2;
+  vec3 m0=vec3(0.),m1=vec3(0.),m2=vec3(0.),m3=vec3(0.),s0=vec3(0.),s1=vec3(0.),s2=vec3(0.),s3=vec3(0.);
+  for(int j=0;j<=3;j++){for(int i=0;i<=3;i++){
+    vec2 o=vec2(float(i),float(j))*px;vec3 c;
+    c=S(uv+vec2(-o.x,-o.y));m0+=c;s0+=c*c;
+    c=S(uv+vec2( o.x,-o.y));m1+=c;s1+=c*c;
+    c=S(uv+vec2(-o.x, o.y));m2+=c;s2+=c*c;
+    c=S(uv+vec2( o.x, o.y));m3+=c;s3+=c*c;}}
+  float k=1./16.;m0*=k;m1*=k;m2*=k;m3*=k;
+  float v0=dot(s0*k-m0*m0,vec3(1.)),v1=dot(s1*k-m1*m1,vec3(1.)),v2=dot(s2*k-m2*m2,vec3(1.)),v3=dot(s3*k-m3*m3,vec3(1.));
+  vec3 col=m0;float v=v0;if(v1<v){v=v1;col=m1;}if(v2<v){v=v2;col=m2;}if(v3<v){v=v3;col=m3;}
+  // 厚塗りの凹凸（筆跡に光が当たったような明暗）
+  vec2 sq=vec2(dot(q,dir),dot(q,vec2(-dir.y,dir.x)));
+  float b1=n(sq*vec2(.12,.6)),b2=n((sq+vec2(.8,.8))*vec2(.12,.6));
+  float edge=clamp(sqrt(max(v,0.))*2.5,0.,1.);
+  col*=1.+(b1-b2)*(.04+.14*edge);
+  // キャンバスの布目
+  float weave=(sin(q.x*2.2)*sin(q.y*2.2))*.008+(n(q*.7)-.5)*.025;
+  col+=weave;
+  float lum=dot(col,vec3(.299,.587,.114));col=mix(vec3(lum),col,1.12);
+  col*=dim;
+  gl_FragColor=vec4(clamp(col,0.,1.),1.);
+}`;
 const Q=T3?new T3.Quaternion():null,Wv=T3?new T3.Vector3(0,.25,0):null;
 function makeEnv(){const env=new T3.Scene(),eg=new T3.SphereGeometry(10,32,16),cols=[];
   const top=new T3.Color(0xf4f4f6),mid=new T3.Color(0x7d828c),bot=new T3.Color(0x1d2026);
@@ -258,6 +325,16 @@ function initGL(){
   const halo=new T3.Sprite(new T3.SpriteMaterial({map:GLOW,color:0xffffff,transparent:true,opacity:.5,blending:T3.AdditiveBlending,depthWrite:false}));halo.renderOrder=-1;scene.add(halo);body.userData.halo=halo;
   corona=new T3.Sprite(new T3.SpriteMaterial({map:GLOW,color:0xfff1c9,transparent:true,opacity:0,blending:T3.AdditiveBlending,depthWrite:false}));scene.add(corona);
   moonGroup=new T3.Group();scene.add(moonGroup);
+  crackGroup=new T3.Group();body.add(crackGroup);
+  haze=new T3.Sprite(new T3.SpriteMaterial({map:GLOW,color:0x8a8f99,transparent:true,opacity:0,depthWrite:false,depthTest:false}));haze.renderOrder=5;scene.add(haze);
+  // 油絵風：いったん絵を描いてから、厚塗りの筆跡に変える
+  skyTex=new T3.CanvasTexture(sky);skyTex.encoding=T3.sRGBEncoding;scene.background=skyTex;
+  fxTex=new T3.CanvasTexture(fx);
+  rt=new T3.WebGLRenderTarget(4,4);rt.texture.encoding=T3.sRGBEncoding;
+  postMat=new T3.ShaderMaterial({uniforms:{tScene:{value:rt.texture},tFx:{value:fxTex},res:{value:new T3.Vector2(4,4)},dim:{value:1},scale:{value:1}},
+    vertexShader:"varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}",fragmentShader:OIL_FS,depthTest:false,depthWrite:false});
+  postScene=new T3.Scene();postScene.add(new T3.Mesh(new T3.PlaneGeometry(2,2),postMat));postCam=new T3.OrthographicCamera(-1,1,1,-1,0,1);
+  sky.style.visibility="hidden";fx.style.visibility="hidden";
   return true}
 const glOK=initGL();
 resize();addEventListener("resize",resize);
@@ -298,6 +375,19 @@ function buildMoons(){
     const holder=new T3.Group();holder.add(m);holder.add(glow);orbit.add(holder);moonGroup.add(orbit);
     moons.push({holder,rad,speed:.35/(1+i*.35),phase:i*1.7})})}
 
+// ひびと金継ぎ：球の表面を歩くようにひびを描き、直った分だけ金色にする
+function crackPath(seed){let r=seed;const rnd=()=>{r=(r*16807)%2147483647;return r/2147483647};
+  const pts=[];let p=new T3.Vector3(rnd()-.5,rnd()-.5,rnd()-.5).normalize();let tg=new T3.Vector3().crossVectors(p,new T3.Vector3(0,1,0.1)).normalize();
+  for(let i=0;i<16;i++){pts.push(p.clone().multiplyScalar(1.012));const a=(rnd()-.5)*1.1;tg.applyAxisAngle(p,a);p=p.clone().addScaledVector(tg,.075).normalize();tg.sub(p.clone().multiplyScalar(tg.dot(p))).normalize()}
+  return pts}
+function buildCracks(){
+  if(!glOK)return;while(crackGroup.children.length){const c=crackGroup.children.pop();c.geometry.dispose()}
+  const dark=new T3.MeshBasicMaterial({color:0x1d1a22}),gold=new T3.MeshPhysicalMaterial({color:0xd8a93c,metalness:1,roughness:.25,emissive:0x6b4a10,emissiveIntensity:.6});
+  st.cracks.forEach((c,ci)=>{const pts=crackPath(c.seed);const br=crackPath(c.seed*7+3).slice(0,8).map(v=>v);const off=pts[7].clone().sub(br[0]);br.forEach(v=>v.add(off).normalize().multiplyScalar(1.012));
+    const frac=clamp(c.prog/c.need,0,1),w=.04+.01*c.size;
+    [[pts,0],[br,.5]].forEach(([P,start])=>{const curve=new T3.CatmullRomCurve3(P);crackGroup.add(new T3.Mesh(new T3.TubeGeometry(curve,40,w,5,false),dark));
+      const f=clamp((frac-start)/(1-start*.5),0,1);if(f>0){const n=Math.max(2,Math.round(P.length*f));const sub=new T3.CatmullRomCurve3(P.slice(0,n));crackGroup.add(new T3.Mesh(new T3.TubeGeometry(sub,40,w*1.25,5,false),gold))}})})}
+
 let bodyScale=.25,pulse=0,dragging=null,lastTouch=0;
 gl.addEventListener("pointerdown",e=>{try{gl.setPointerCapture(e.pointerId)}catch(_){}dragging={x:e.clientX,y:e.clientY,t:performance.now(),moved:0};lastTouch=performance.now()});
 gl.addEventListener("pointermove",e=>{if(!dragging||!glOK)return;const dx=e.clientX-dragging.x,dy=e.clientY-dragging.y;dragging.x=e.clientX;dragging.y=e.clientY;dragging.moved+=Math.abs(dx)+Math.abs(dy);
@@ -318,7 +408,7 @@ function frame(tn){
   fctx.clearRect(0,0,W,H);
   if(!reduce&&(w.kind==="rain"||w.kind==="storm"||w.kind==="snow")){
     const want=w.kind==="snow"?70:120;while(drops.length<want)drops.push({x:Math.random()*W,y:Math.random()*H,v:w.kind==="snow"?20+Math.random()*25:380+Math.random()*200});
-    fctx.strokeStyle=w.day?"rgba(230,238,245,.55)":"rgba(170,185,205,.45)";fctx.fillStyle="rgba(255,255,255,.85)";fctx.lineWidth=1;
+    fctx.strokeStyle=w.day?"rgba(230,238,245,.55)":"rgba(170,185,205,.45)";fctx.fillStyle="rgba(255,255,255,.85)";fctx.lineWidth=2;fctx.lineCap="round";
     const sl=(w.wind||2)*6;
     for(const d of drops){d.y+=d.v*dt;d.x+=(w.kind==="snow"?Math.sin(t+d.v)*10:sl)*dt;if(d.y>H){d.y=-10;d.x=Math.random()*W}if(d.x>W)d.x-=W;
       if(w.kind==="snow"){fctx.beginPath();fctx.arc(d.x,d.y,1.6,0,Math.PI*2);fctx.fill()}else{fctx.beginPath();fctx.moveTo(d.x,d.y);fctx.lineTo(d.x-sl*.04,d.y-12);fctx.stroke()}}
@@ -339,26 +429,36 @@ function frame(tn){
     corona.position.copy(body.position);corona.material.opacity=si>=4?(.55+.1*Math.sin(t*1.5))*bright:0;corona.scale.setScalar(sc*5.5);
     moonGroup.position.copy(body.position);moonGroup.scale.setScalar(.6+bodyScale*.5);
     moons.forEach(m=>{const a=m.phase+t*m.speed*(reduce?.3:1);m.holder.position.set(Math.cos(a)*m.rad,0,Math.sin(a)*m.rad)});
-    renderer.render(scene,camera);
+    const ku=kumoriOn();bodyMat.color.setScalar(ku?.45:openCrack()?.85:1);haze.position.copy(body.position).add(new T3.Vector3(0,0,1.2));haze.scale.setScalar(sc*4.6);haze.material.opacity=ku?.85+.08*Math.sin(t*.7):0;
+    if(ku){bodyMat.emissiveIntensity=.02;halo.material.opacity*=.3}
   }
   // 雨の日：ボールの上の小さな灯りの傘
   if(tough){const cx=W/2,cy=H*.42,R=Math.min(W,H)*.2*bodyScale/0.8;fctx.save();fctx.strokeStyle="rgba(255,236,190,.35)";fctx.lineWidth=2;fctx.beginPath();fctx.arc(cx,cy,Math.max(1,R*1.25),Math.PI*1.15,Math.PI*1.85);fctx.stroke();fctx.restore()}
+  // 心のくもり：ボールのまわりに灰色の雲がかかる
+  if(kumoriOn()){const cx=W/2,cy=H*.43,R=Math.min(W,H)*.22*bodyScale/.8;for(let i=0;i<7;i++){const a=i/7*Math.PI*2+t*.12,rr=R*(.55+.25*Math.sin(i*2.3));
+    const x=cx+Math.cos(a)*rr,y=cy+Math.sin(a)*rr*.7,g=fctx.createRadialGradient(x,y,0,x,y,R*.75);g.addColorStop(0,"rgba(118,122,132,.62)");g.addColorStop(1,"rgba(118,122,132,0)");fctx.fillStyle=g;fctx.fillRect(x-R,y-R,R*2,R*2)}}
   // 光の粒・とんでくる記録
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.life-=dt*.8;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.life<=0){parts.splice(i,1);continue}
     fctx.fillStyle="hsla("+p.hue+",90%,75%,"+p.life+")";fctx.beginPath();fctx.arc(p.x,p.y,Math.max(.5,1.5+2.5*p.life),0,Math.PI*2);fctx.fill()}
   if(flying){flying.t+=dt;const q=clamp(flying.t/1.2,0,1),e=q<.5?2*q*q:1-Math.pow(-2*q+2,2)/2;const x=W/2,y=H-20+(H*.45-(H-20))*e;
     fctx.fillStyle="rgba(255,240,200,"+(1-q*.6)+")";fctx.beginPath();fctx.arc(x,y,6*(1-q*.5),0,Math.PI*2);fctx.fill();
     if(q>=1){flying=null;pulse=1;burst(W/2,H*.45,16)}}
+  if(glOK){skyTex.needsUpdate=true;fxTex.needsUpdate=true;postMat.uniforms.dim.value=trialOn()?.86:1;
+    renderer.setRenderTarget(rt);renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(postScene,postCam)}
   requestAnimationFrame(frame)}
 
 /* ---------- 画面 ---------- */
-let draft={text:"",care:"",values:[],strengths:[]};let current="grow",toast="";
+let draft={text:"",care:"",values:[],strengths:[]};let current="grow",toast="";let hard={text:"",size:2},hardOpen=false;
 function stageInfo(){const i=stageIdx(),n=points();const next=STAGES[i+1];return{name:STAGES[i][1],next:next?next[1]:null,need:next?next[0]-n:0,frac:next?(n-STAGES[i][0])/(next[0]-STAGES[i][0]):1}}
 function renderHead(){const si=stageInfo(),f=formOf();$("#stageName").innerHTML=esc(si.name)+'<small>'+esc(f?f.name:(points()<5?"姿は記録5つから":""))+'</small>'}
 function renderGrow(){
   const v=$("#v-grow"),si=stageInfo(),w=wxNow();
   let h="";
   if(!st.values.length)h+='<div class="banner">はじめに「価値と設定」で、大切にしたい価値を3〜5つ選んでください。ボールのまわりを回る月になります。<br><button class="link" data-goto="set">価値を選ぶ</button></div>';
+  if(kumoriOn()){const k=st.ev.kumori,c=CARE_MAP[k.care];h+='<div class="banner"><b>心のくもり</b><br>ボールがくもっています。'+(TODAY<=k.until?'<b>'+(+k.until.split("-")[1])+'/'+(+k.until.split("-")[2])+'</b>までに「'+c[1]+'」のお世話を1回すると晴れて、「晴れのしるし」が残ります。':'課題の期限は過ぎましたが、数日で自然に晴れていきます。')+'<br><button class="link" id="kuSkip">今日は休む（くもりを終わらせる）</button></div>'}
+  if(trialOn())h+='<div class="banner"><b>天気の試練「'+esc(st.trial.name)+'」</b><br>つらい天気が続いて、世界が少し暗くなっています。この間に記録を続けると、天気が回復したとき虹が出て、花が咲きます。（この間の記録：'+st.trial.records+'）</div>';
+  if(st.rainbow===TODAY)h+='<div class="banner"><b>虹が出ています</b><br>試練を乗りこえました。地面に花が咲いています。</div>';
+  {const oc=openCrack();if(oc)h+='<div class="banner"><b>ひびの金継ぎ</b><br>「'+esc(oc.text||"しんどい出来事")+'」のひびを、金で継いでいます（'+oc.prog+'/'+oc.need+'）。お世話を記録するたびに金の線がのびます。休む・つながるは2つ分進みます。</div>'}
   if(!w.known)h+='<div class="manual"><span class="muted">きょうの天気：</span>'+Object.entries(WX).map(([k,n])=>'<button class="chip" data-wx="'+k+'">'+n+'</button>').join("")+'</div>';
   h+='<div class="section"><h2>きょう、心のためにしたこと</h2>'+
     '<div class="field"><textarea id="g-text" placeholder="例：早めに布団に入った／同僚に自分から声をかけた">'+esc(draft.text)+'</textarea></div>'+
@@ -366,18 +466,24 @@ function renderGrow(){
     (st.values.length?'<div class="field"><span class="lbl">沿っていた価値（任意）</span><div class="chips">'+st.values.map((x,i)=>'<button class="chip" data-val="'+esc(x)+'" aria-pressed="'+draft.values.includes(x)+'" style="--c:hsl('+MOON_HUES[i%5]+',50%,62%)"><span class="dot"></span>'+esc(x)+'</button>').join("")+'</div></div>':"")+
     '<div class="field"><span class="lbl">使った強み（任意）</span><div class="chips">'+STRENGTHS.map(s=>'<button class="chip" data-str="'+s[0]+'" aria-pressed="'+draft.strengths.includes(s[0])+'" style="--c:'+SCOL[s[0]]+'"><span class="dot"></span>'+s[0]+'</button>').join("")+'</div><span class="hint">選んだ強みは、その色の面としてボールに刻まれます。</span></div>'+
     '<div class="btnrow"><button class="primary" id="g-save" '+(draft.care&&draft.text.trim()?"":"disabled")+'>記録する</button><span class="hint">'+(w.known&&isTough(w)?"きょうの記録は「雨の日のがんばり」として、地面に灯りがともります。":"")+'</span></div><div class="toast" id="g-toast">'+esc(toast)+'</div></div>';
+  h+='<details class="section" id="hardBox" '+(hardOpen?"open":"")+'><summary style="cursor:pointer"><h2 style="display:inline">しんどい出来事があった</h2></summary>'+
+    '<p class="small muted">書くと、ボールにひびが入ります。そのあとのお世話で、ひびは金色の線でつながり、模様として残ります（金継ぎ）。育ちが減ることはありません。</p>'+
+    '<div class="field"><textarea id="h-text" placeholder="例：仕事で強く言われた">'+esc(hard.text)+'</textarea></div>'+
+    '<div class="field"><span class="lbl">こたえ具合</span><div class="chips">'+SIZE.map((x,i)=>'<button class="chip" data-size="'+(i+1)+'" aria-pressed="'+(hard.size===i+1)+'">'+x[0]+'</button>').join("")+'</div></div>'+
+    '<div class="btnrow"><button class="ghost" id="h-save" '+(hard.text.trim()?"":"disabled")+'>記録する</button></div></details>';
   h+='<div class="section"><h2>育ち</h2><p>'+esc(si.name)+(si.next?'　<span class="small muted">「'+esc(si.next)+'」まであと '+si.need+' 回</span>':'　<span class="small muted">いちばん大きな姿です</span>')+'</p><div class="prog"><i style="width:'+Math.round(si.frac*100)+'%"></i></div>'+
     '<div class="rows">'+(()=>{const c=careCounts(),mx=Math.max(1,...Object.values(c));return CARE.map(x=>'<div class="row"><span class="nm">'+x[1]+'</span><span class="bar"><i style="width:'+(c[x[0]]/mx*100)+'%;--c:hsl('+x[3][0]+','+x[3][1]+'%,'+(x[3][2]-14)+'%)"></i></span><span class="n">'+c[x[0]]+'</span></div>').join("")})()+'</div>'+
     '<p class="note">いちばん多いお世話の種類で、ボールの姿が決まります（記録5つから）。偏りが少ないと「虹のボール」になります。</p></div>';
   if(st.values.length){const vc=valueCounts(),mx=Math.max(1,...Object.values(vc));h+='<div class="section"><h2>価値の月</h2><div class="rows">'+st.values.map((x,i)=>'<div class="row"><span class="nm" style="--c:hsl('+MOON_HUES[i%5]+',50%,62%)"><i></i>'+esc(x)+'</span><span class="bar"><i style="width:'+((vc[x]||0)/mx*100)+'%;--c:hsl('+MOON_HUES[i%5]+',45%,55%)"></i></span><span class="n">'+(vc[x]||0)+'</span></div>').join("")+'</div></div>'}
   const sc={};strengthCuts().forEach(s=>sc[s]=(sc[s]||0)+1);const used=STRENGTHS.filter(s=>sc[s[0]]);
   h+='<div class="section"><h2>強みの面</h2>'+(used.length?'<div class="rows">'+used.sort((a,b)=>sc[b[0]]-sc[a[0]]).map(s=>'<div class="row"><span class="nm" style="--c:'+SCOL[s[0]]+'"><i></i>'+s[0]+'</span><span class="bar"><i style="width:'+(sc[s[0]]/Math.max(...Object.values(sc))*100)+'%;--c:'+SCOL[s[0]]+'"></i></span><span class="n">'+sc[s[0]]+'</span></div>').join("")+'</div>':'<p class="small muted">まだ面はありません。強みを選んで記録すると、ボールに面が刻まれます。</p>')+
-    '<p class="note">雨の日のがんばり：'+rainDays()+'　（地面の灯りの数）</p></div>';
+    '<p class="note">雨の日のがんばり：'+rainDays()+'（地面の灯り）／金継ぎ：'+mended()+'／晴れのしるし：'+st.ev.marks+'／試練の花：'+st.flowers+'</p></div>';
   v.innerHTML=h}
 function renderLog(){
   const v=$("#v-log"),R=st.records.slice().reverse();
   let h='<div class="section"><h2>これまでの記録</h2>';
   if(!R.length)h+='<p class="small muted">まだ記録はありません。</p>';
+  if(st.cracks.length)h+='<p class="small muted">しんどい出来事：'+st.cracks.length+'（金継ぎ済み '+mended()+'）</p>'+st.cracks.slice().reverse().map(c=>{const p=c.date.split("-");return'<div class="rec"><span class="d">'+(+p[1])+'/'+(+p[2])+'</span><span class="t">'+esc(c.text)+'<small>しんどい出来事・'+SIZE[c.size-1][0]+'・金継ぎ '+c.prog+'/'+c.need+'</small></span>'+(delAsk===c.id?'<span class="btnrow"><button class="ghost" data-crok="'+c.id+'">削除</button><button class="link" data-delno="1">やめる</button></span>':'<button class="link" data-del="'+c.id+'">削除</button>')+'</div>'}).join("");
   R.forEach(r=>{const p=r.date.split("-");h+='<div class="rec"><span class="d">'+(+p[1])+'/'+(+p[2])+'</span><span class="t">'+esc(r.text)+'<small>'+esc([CARE_MAP[r.care]?CARE_MAP[r.care][1]:"",(r.values||[]).join("・"),(r.strengths||[]).join("・"),r.tough?"雨の日のがんばり":"",r.wx?WX[r.wx]:""].filter(Boolean).join("　"))+'</small></span>'+
     (delAsk===r.id?'<span class="btnrow"><button class="ghost" data-delok="'+r.id+'">削除</button><button class="link" data-delno="1">やめる</button></span>':'<button class="link" data-del="'+r.id+'">削除</button>')+'</div>'});
   h+='<p class="note">記録を削除すると、その分の育ちや面も元に戻ります。</p></div>';
@@ -399,23 +505,33 @@ function show(n){current=n;document.querySelectorAll(".tabs button").forEach(b=>
   if(n==="grow")renderGrow();if(n==="log")renderLog();if(n==="set"){valDraft=null;renderSet()}}
 document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b)show(b.dataset.v)});
 
-$("#v-grow").addEventListener("input",e=>{if(e.target.id==="g-text"){draft.text=e.target.value;$("#g-save").disabled=!(draft.care&&draft.text.trim())}});
+$("#v-grow").addEventListener("input",e=>{if(e.target.id==="g-text"){draft.text=e.target.value;$("#g-save").disabled=!(draft.care&&draft.text.trim())}
+  if(e.target.id==="h-text"){hard.text=e.target.value;$("#h-save").disabled=!hard.text.trim()}});
+$("#v-grow").addEventListener("toggle",e=>{if(e.target.id==="hardBox")hardOpen=e.target.open},true);
 $("#v-grow").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
   if(b.dataset.goto){show(b.dataset.goto);return}
-  if(b.dataset.wx){weather={src:"manual",at:Date.now(),kind:b.dataset.wx,temp:null,wind:0,day:null};save("kokoro-grow-wx",weather);renderWx();renderGrow();return}
+  if(b.dataset.wx){weather={src:"manual",at:Date.now(),kind:b.dataset.wx,temp:null,wind:0,day:null};save("kokoro-grow-wx",weather);const m=logWeather();if(m)toast=m;renderWx();renderGrow();return}
+  if(b.id==="kuSkip"){st.ev.kumori=null;st.ev.lastEnd=Date.now();st.ev.skip=TODAY;persist();toast="くもりを終わらせました。今日はゆっくりしてください。";renderGrow();return}
+  if(b.dataset.size){hard.size=+b.dataset.size;renderGrow();return}
+  if(b.id==="h-save"){const sz=hard.size;st.cracks.push({id:uid(),date:TODAY,at:Date.now(),text:hard.text.trim(),size:sz,need:SIZE[sz-1][1],prog:0,seed:Math.floor(Math.random()*2e9)+1});persist();
+    hard={text:"",size:2};hardOpen=false;buildCracks();toast="ボールにひびが入りました。お世話を重ねると、金色の線でつながっていきます。";pulse=1;renderGrow();window.scrollTo({top:0,behavior:reduce?"auto":"smooth"});return}
   if(b.dataset.care){draft.care=draft.care===b.dataset.care?"":b.dataset.care;toast="";renderGrow();return}
   const tog=(arr,x)=>{const i=arr.indexOf(x);if(i>=0)arr.splice(i,1);else arr.push(x)};
   if(b.dataset.val){tog(draft.values,b.dataset.val);renderGrow();return}
   if(b.dataset.str){tog(draft.strengths,b.dataset.str);renderGrow();return}
   if(b.id==="g-save"){const w=wxNow();const before=stageIdx(),beforeForm=(formOf()||{}).name;
     st.records.push({id:uid(),date:dkey(new Date()),at:Date.now(),text:draft.text.trim(),care:draft.care,values:draft.values.slice(),strengths:draft.strengths.slice(),wx:w.known?w.kind:null,tough:!!(w.known&&isTough(w))});
+    const extra=[];const oc=openCrack();if(oc){oc.prog=Math.min(oc.need,oc.prog+(draft.care==="rest"||draft.care==="connect"?2:1));if(oc.prog>=oc.need)extra.push("金継ぎができあがりました。")}
+    const ku=st.ev.kumori;if(ku&&ku.care===draft.care&&TODAY<=ku.until){st.ev.kumori=null;st.ev.lastEnd=Date.now();st.ev.marks++;extra.push("くもりが晴れて、「晴れのしるし」が残りました。")}
+    if(st.trial)st.trial.records++;
     persist();const after=stageIdx(),f=formOf();
-    toast=after>before?"「"+STAGES[after][1]+"」に育ちました！":(f&&f.name!==beforeForm?"姿が「"+f.name+"」になりました。":"記録しました。ボールが少し育ちました。");
+    toast=(after>before?"「"+STAGES[after][1]+"」に育ちました！":(f&&f.name!==beforeForm?"姿が「"+f.name+"」になりました。":"記録しました。ボールが少し育ちました。"))+extra.join("");buildCracks();
     draft={text:"",care:"",values:[],strengths:[]};buildBody();renderHead();renderGrow();flying={t:0};window.scrollTo({top:0,behavior:reduce?"auto":"smooth"});return}
 });
 $("#v-log").addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
   if(b.dataset.del){delAsk=b.dataset.del;renderLog();return}
   if(b.dataset.delno){delAsk=null;renderLog();return}
+  if(b.dataset.crok){st.cracks=st.cracks.filter(c=>c.id!==b.dataset.crok);delAsk=null;persist();buildCracks();renderLog();return}
   if(b.dataset.delok){st.records=st.records.filter(r=>r.id!==b.dataset.delok);delAsk=null;persist();buildBody();renderHead();renderLog();return}
   if(b.id==="exp"){const s=JSON.stringify(st),ta=$("#bk");ta.hidden=false;ta.value=s;$("#imp").hidden=true;try{await navigator.clipboard.writeText(s);$("#bkToast").textContent="コピーしました。メモアプリなどに貼って保管してください。"}catch(_){ta.select();$("#bkToast").textContent="下の文字を全選択してコピーしてください。"}return}
   if(b.id==="impOpen"){const ta=$("#bk");ta.hidden=false;ta.value="";ta.placeholder="控えの文字をここに貼り付け";$("#imp").hidden=false;return}
@@ -429,7 +545,8 @@ $("#v-set").addEventListener("click",e=>{const b=e.target.closest("button");if(!
   if(b.id==="valSave"){st.values=valDraft.slice();persist();buildMoons();renderSet();$("#valToast").textContent="月を入れかえました。";return}
 });
 
-buildBody();renderHead();renderWx();renderGrow();requestAnimationFrame(frame);
+evalKumori();{const m=logWeather();if(m)toast=m}
+buildBody();buildCracks();renderHead();renderWx();renderGrow();requestAnimationFrame(frame);
 fetchWeather();setInterval(fetchWeather,30*60e3);if("serviceWorker" in navigator&&location.protocol==="https:"){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 })();
 </script>
