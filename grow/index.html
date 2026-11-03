@@ -157,6 +157,9 @@ const SCOL=Object.fromEntries(STRENGTHS.map(s=>[s[0],"hsl("+s[1]+",62%,62%)"]));
 const VALUE_IDEAS=["家族","パートナー","友人","仕事","学び・成長","健康","誠実さ","やさしさ","挑戦","遊び・楽しさ","人の役に立つ","自然","創ること","落ち着き","自立","感謝"];
 const MOON_HUES=[200,38,320,140,265];
 const STAGES=[[0,"光の種"],[3,"小さな玉"],[10,"ボール"],[25,"かがやくボール"],[50,"星"]];
+const STYLES=[["plain","そのまま"],["watercolor","水彩"],["gouache","絵本"],["pencil","色鉛筆"],["impression","印象派の筆"]];
+let artStyle=load("kokoro-grow-style","plain");if(!STYLES.some(x=>x[0]===artStyle))artStyle="plain";
+const STYLE_IDX=()=>STYLES.findIndex(x=>x[0]===artStyle);
 const HOME={name:"川崎市麻生区",lat:35.6037,lon:139.5079};
 
 /* ---------- 記録 ---------- */
@@ -271,35 +274,63 @@ function drawMoonPhase(x,y,r,age,alpha){
 let renderer=null,scene,camera,body,bodyMat,corona,moonGroup,moons=[],rt,postScene,postCam,postMat,skyTex,fxTex,crackGroup,haze;
 const OIL_FS=`
 precision highp float;
-uniform sampler2D tScene;uniform sampler2D tFx;uniform vec2 res;uniform float dim;uniform float scale;varying vec2 vUv;
+uniform sampler2D tScene;uniform sampler2D tFx;uniform vec2 res;uniform float dim;uniform float scale;uniform float style;uniform float time;varying vec2 vUv;
 vec3 S(vec2 uv){vec3 c=texture2D(tScene,uv).rgb;vec4 f=texture2D(tFx,uv);return mix(c,f.rgb,f.a);}
 float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+vec2 h2(vec2 p){return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);}
 float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1.,0.)),f.x),mix(h(i+vec2(0.,1.)),h(i+vec2(1.,1.)),f.x),f.y);}
+float lum(vec3 c){return dot(c,vec3(.299,.587,.114));}
+float edgeAt(vec2 uv,vec2 px){float l=lum(S(uv-vec2(px.x,0.))),r=lum(S(uv+vec2(px.x,0.))),d=lum(S(uv-vec2(0.,px.y))),u=lum(S(uv+vec2(0.,px.y)));return length(vec2(r-l,u-d));}
+// 印象派：短い筆のかさなり（場所ごとの筆が、筆の中心の色で塗る）
+vec3 strokes(vec2 q,vec2 px,float cell){
+  vec3 col=S(vUv);float best=-1.;
+  vec2 c0=floor(q/cell);
+  for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){
+    vec2 c=c0+vec2(float(i),float(j));vec2 r=h2(c);vec2 cen=(c+r)*cell;
+    float a=n(cen/60.)*3.1416+(r.x-.5)*.6;vec2 d=q-cen;vec2 dd=vec2(dot(d,vec2(cos(a),sin(a))),dot(d,vec2(-sin(a),cos(a))));
+    float e=(dd.x*dd.x)/(cell*cell*1.1)+(dd.y*dd.y)/(cell*cell*.13);
+    float layer=r.y;
+    if(e<1.&&layer>best){best=layer;vec2 cuv=cen/(res/scale);vec3 sc=S(cuv);
+      float bristle=.92+.08*sin(dd.y*2.2+r.x*30.);col=sc*bristle*(1.+.05*(r.x-.5));}
+  }
+  return col;}
 void main(){
-  vec2 px=scale*2.1/res;
-  vec2 q=vUv*res/scale;
-  // 筆の向き：場所ごとに少しずつ傾いた筆で塗ったように、ずらして読む
-  float ang=n(q/38.)*6.2831;vec2 dir=vec2(cos(ang),sin(ang));
-  vec2 uv=vUv+dir*(n(q/9.)-.5)*px*1.2;
-  vec3 m0=vec3(0.),m1=vec3(0.),m2=vec3(0.),m3=vec3(0.),s0=vec3(0.),s1=vec3(0.),s2=vec3(0.),s3=vec3(0.);
-  for(int j=0;j<=3;j++){for(int i=0;i<=3;i++){
-    vec2 o=vec2(float(i),float(j))*px;vec3 c;
-    c=S(uv+vec2(-o.x,-o.y));m0+=c;s0+=c*c;
-    c=S(uv+vec2( o.x,-o.y));m1+=c;s1+=c*c;
-    c=S(uv+vec2(-o.x, o.y));m2+=c;s2+=c*c;
-    c=S(uv+vec2( o.x, o.y));m3+=c;s3+=c*c;}}
-  float k=1./16.;m0*=k;m1*=k;m2*=k;m3*=k;
-  float v0=dot(s0*k-m0*m0,vec3(1.)),v1=dot(s1*k-m1*m1,vec3(1.)),v2=dot(s2*k-m2*m2,vec3(1.)),v3=dot(s3*k-m3*m3,vec3(1.));
-  vec3 col=m0;float v=v0;if(v1<v){v=v1;col=m1;}if(v2<v){v=v2;col=m2;}if(v3<v){v=v3;col=m3;}
-  // 厚塗りの凹凸（筆跡に光が当たったような明暗）
-  vec2 sq=vec2(dot(q,dir),dot(q,vec2(-dir.y,dir.x)));
-  float b1=n(sq*vec2(.12,.6)),b2=n((sq+vec2(.8,.8))*vec2(.12,.6));
-  float edge=clamp(sqrt(max(v,0.))*2.5,0.,1.);
-  col*=1.+(b1-b2)*(.04+.14*edge);
-  // キャンバスの布目
-  float weave=(sin(q.x*2.2)*sin(q.y*2.2))*.008+(n(q*.7)-.5)*.025;
-  col+=weave;
-  float lum=dot(col,vec3(.299,.587,.114));col=mix(vec3(lum),col,1.12);
+  vec2 px=scale/res;vec2 q=vUv*res/scale;vec3 col;
+  if(style<.5){ col=S(vUv); }
+  else if(style<1.5){ // 水彩
+    vec2 w=(vec2(n(q/26.),n(q/26.+9.))-.5)*px*6.;vec2 uv=vUv+w;
+    vec3 a=S(uv);vec3 b=vec3(0.);
+    for(int j=-2;j<=2;j++)for(int i=-2;i<=2;i++){b+=S(uv+vec2(float(i),float(j))*px*2.5);}b/=25.;
+    col=mix(a,b,.55);
+    float e=edgeAt(uv,px*2.);col*=1.-clamp(e*1.6,0.,.35);
+    float wash=n(q/40.)*.5+n(q/12.)*.5;col=1.-(1.-col)*(.78+.16*wash);
+    float gran=n(q*.5);col*=.95+.06*gran;
+    col=mix(col,vec3(.98,.96,.92),.05);
+  }
+  else if(style<2.5){ // 絵本（ガッシュ）
+    vec2 uv=vUv+(vec2(n(q/30.),n(q/30.+4.))-.5)*px*2.;vec3 a=vec3(0.);
+    for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){a+=S(uv+vec2(float(i),float(j))*px*1.5);}a/=9.;
+    float L=lum(a)+1e-3;float x=L*5.;float band=(floor(x)+smoothstep(.35,.65,fract(x)))/5.;
+    col=a/L*clamp(band,.06,1.05);
+    float e=edgeAt(uv,px*1.4);col=mix(col,col*.4,smoothstep(.16,.3,e));
+    float dry=n(vec2(q.x*.07,q.y*.7));col*=.96+.07*dry;
+    col=mix(col,vec3(.96,.92,.84),.06);
+  }
+  else if(style<3.5){ // 色鉛筆
+    vec3 a=S(vUv);float L=lum(a);vec3 paper=vec3(.97,.96,.93);
+    float dark=1.-L;float jit=n(q/7.)*2.;
+    float h1=step(.55,fract((q.x+q.y+jit)/3.2))*smoothstep(.0,.35,dark+.15);
+    float h2b=step(.6,fract((q.x-q.y+jit)/3.4))*smoothstep(.35,.8,dark);
+    float cover=clamp(h1*.75+h2b*.6+.18,0.,1.);
+    col=mix(paper,a*1.08,cover*(.75+.25*n(q*1.3)));
+    float e=edgeAt(vUv,px*1.2);col=mix(col,a*.35,smoothstep(.12,.3,e)*.8);
+  }
+  else{ // 印象派の筆
+    vec3 base=strokes(q,px,9.);vec3 top=strokes(q+vec2(4.5,3.),px,6.);
+    col=mix(base,top,.55);
+    float L=lum(col);col=mix(vec3(L),col,1.18);
+    col*=.96+.06*n(q*.6);
+  }
   col*=dim;
   gl_FragColor=vec4(clamp(col,0.,1.),1.);
 }`;
@@ -331,7 +362,7 @@ function initGL(){
   skyTex=new T3.CanvasTexture(sky);skyTex.encoding=T3.sRGBEncoding;scene.background=skyTex;
   fxTex=new T3.CanvasTexture(fx);
   rt=new T3.WebGLRenderTarget(4,4);rt.texture.encoding=T3.sRGBEncoding;
-  postMat=new T3.ShaderMaterial({uniforms:{tScene:{value:rt.texture},tFx:{value:fxTex},res:{value:new T3.Vector2(4,4)},dim:{value:1},scale:{value:1}},
+  postMat=new T3.ShaderMaterial({uniforms:{tScene:{value:rt.texture},tFx:{value:fxTex},res:{value:new T3.Vector2(4,4)},dim:{value:1},scale:{value:1},style:{value:STYLE_IDX()},time:{value:0}},
     vertexShader:"varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}",fragmentShader:OIL_FS,depthTest:false,depthWrite:false});
   postScene=new T3.Scene();postScene.add(new T3.Mesh(new T3.PlaneGeometry(2,2),postMat));postCam=new T3.OrthographicCamera(-1,1,1,-1,0,1);
   sky.style.visibility="hidden";fx.style.visibility="hidden";
@@ -498,6 +529,7 @@ function renderSet(){
     '<div class="btnrow"><input type="text" id="valAdd" placeholder="ほかの価値を書く" maxlength="12" style="flex:1;min-width:0" value="'+esc(valAdd)+'"><button class="ghost" id="valAddBtn">追加</button></div>'+
     '<div class="btnrow"><button class="primary" id="valSave" '+(valDraft.length>=1&&valDraft.length<=5?"":"disabled")+'>この価値にする（'+valDraft.length+'/5）</button></div><div class="toast" id="valToast"></div>'+
     '<p class="note">価値を外すと、その月は見えなくなります（記録は残ります）。</p></div>';
+  h+='<div class="section"><h2>画風</h2><p class="small muted">世界の描き方を選べます。動きが重いと感じたら「そのまま」にしてください。</p><div class="chips">'+STYLES.map(x=>'<button class="chip" data-style="'+x[0]+'" aria-pressed="'+(artStyle===x[0])+'">'+x[1]+'</button>').join("")+'</div></div>';
   h+='<div class="section"><h2>天気について</h2><p class="small">'+esc(HOME.name)+'の、いまの天気を使います。取得できないときは「育てる」で天気を選べます。季節（二十四節気）と月の満ち欠けは、端末の中で計算しています。</p><p class="note">天気の情報：Open-Meteo（open-meteo.com）</p></div>';
   h+='<div class="section"><h2>このアプリについて</h2><p class="note">こころ育ては、自分の心のためにした小さな行動を、育つボールとして見えるようにするアプリです。お世話しない日があっても、ボールが弱ったり、育ちが減ったりすることはありません。</p></div>';
   v.innerHTML=h}
@@ -542,6 +574,7 @@ $("#v-set").addEventListener("input",e=>{if(e.target.id==="valAdd")valAdd=e.targ
 $("#v-set").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
   if(b.dataset.pick){const x=b.dataset.pick,i=valDraft.indexOf(x);if(i>=0)valDraft.splice(i,1);else if(valDraft.length<5)valDraft.push(x);renderSet();return}
   if(b.id==="valAddBtn"){const x=valAdd.trim();if(x&&!valDraft.includes(x)&&valDraft.length<5)valDraft.push(x);valAdd="";renderSet();return}
+  if(b.dataset.style){artStyle=b.dataset.style;save("kokoro-grow-style",artStyle);if(postMat)postMat.uniforms.style.value=STYLE_IDX();renderSet();return}
   if(b.id==="valSave"){st.values=valDraft.slice();persist();buildMoons();renderSet();$("#valToast").textContent="月を入れかえました。";return}
 });
 

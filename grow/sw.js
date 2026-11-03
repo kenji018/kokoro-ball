@@ -1,6 +1,6 @@
 // こころ育て：電波がなくても開けるように、アプリ本体を端末に保存しておく
 // アプリを更新したら VERSION の数字を上げる
-const VERSION = "kokoro-grow-v2";
+const VERSION = "kokoro-grow-v3";
 const CORE = ["./", "index.html", "../three.min.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(VERSION).then((c) => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => {
