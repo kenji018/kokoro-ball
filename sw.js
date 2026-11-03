@@ -1,6 +1,6 @@
 // こころボール：電波がなくても開けるように、アプリ本体を端末に保存しておく
 // アプリを更新したら VERSION の数字を上げる（古い保存分が入れ替わる）
-const VERSION = "kokoro-ball-v2";
+const VERSION = "kokoro-ball-v3";
 const CORE = [
   "./",
   "index.html",
@@ -27,8 +27,8 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-  // こころノート（note/）は別アプリなので触らない
-  if (url.origin === location.origin && url.pathname.includes("/note/")) return;
+  // こころノート（note/）・こころ育て（grow/）は別アプリなので触らない
+  if (url.origin === location.origin && (url.pathname.includes("/note/")||url.pathname.includes("/grow/"))) return;
 
   // アプリ本体のページ：まずネットから最新を取り、だめなら保存分を使う
   if (req.mode === "navigate") {

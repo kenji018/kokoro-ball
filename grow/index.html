@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>こころ育て</title>
+<meta name="description" content="心のためにした小さな行動で育つボール">
+<meta name="theme-color" content="#EDEEEB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131315" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="こころ育て">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+/* Layout: sister to こころボール. A small world on top (sky, ground, the growing ball and its moons); the day's record and the growth ledger below. */
+:root{
+  --bg:#EDEEEB; --surface:#F7F7F5; --ink:#23262A; --muted:#6C7076; --line:#D3D5D1;
+  --accent:#4B4358; --accent-ink:#F7F7F5; --soft:#E4E2E8; --good:#5B7360;
+  --f-display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --r:3px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131315; --surface:#1B1B1E; --ink:#E7E5E9; --muted:#9A979F; --line:#2E2D32;
+  --accent:#BDB0CC; --accent-ink:#17161A; --soft:#26232B; --good:#9DB7A2; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131315; --surface:#1B1B1E; --ink:#E7E5E9; --muted:#9A979F; --line:#2E2D32;
+  --accent:#BDB0CC; --accent-ink:#17161A; --soft:#26232B; --good:#9DB7A2; color-scheme:dark}
+[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:14.5px;line-height:1.8;letter-spacing:.02em;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 56px}
+.app{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h1{font-family:var(--f-display);font-weight:500;font-size:1.45rem;margin:0;letter-spacing:.18em}
+h2{font-family:var(--f-display);font-weight:500;font-size:1.05rem;letter-spacing:.16em;margin:0}
+p{margin:0}
+.date{color:var(--muted);font-size:.78rem;letter-spacing:.14em;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}.small{font-size:.8rem}
+button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:1px solid var(--accent);outline-offset:3px}
+
+.world{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:#1b2133;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.world canvas{display:block;width:100%;height:360px}
+#sky,#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#sky{z-index:0}#gl{position:relative;z-index:1;touch-action:none;cursor:grab}#fx{z-index:2}
+.wtop{position:absolute;left:14px;right:14px;top:12px;z-index:3;display:flex;justify-content:space-between;gap:10px;pointer-events:none;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.35)}
+.stage{font-family:var(--f-display);font-size:1.1rem;letter-spacing:.1em;line-height:1.3;white-space:nowrap;min-width:0}
+.stage small{display:block;font-family:var(--f-body);font-size:.72rem;letter-spacing:.1em;opacity:.9}
+.wx{text-align:right;font-size:.7rem;letter-spacing:.04em;line-height:1.55;white-space:nowrap;flex:none}
+.wx b{font-family:var(--f-display);font-weight:500;font-size:1rem;letter-spacing:.08em}
+.wbot:empty{display:none}
+.wbot{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;background:rgba(20,24,32,.35);border-radius:99px;padding-block:2px;white-space:nowrap;z-index:3;text-align:center;color:#fff;font-family:var(--f-display);font-size:.88rem;letter-spacing:.14em;text-shadow:0 1px 6px rgba(0,0,0,.4);pointer-events:none;padding-inline:14px}
+
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;border:0;border-bottom:1px solid transparent;margin-bottom:-1px;background:transparent;color:var(--muted);font-family:var(--f-display);font-size:.95rem;letter-spacing:.14em;padding:10px 4px;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.view{display:flex;flex-direction:column;gap:16px}
+.section{display:flex;flex-direction:column;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>.lbl{font-size:.86rem}
+.hint{font-size:.76rem;color:var(--muted)}
+textarea,input[type=text]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;width:100%;box-sizing:border-box}
+textarea{min-height:72px;resize:vertical;line-height:1.7}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.82rem;padding:3px 12px;border-radius:var(--r);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.care{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.care button{border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;padding:8px 2px;border-radius:var(--r);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0}
+.care button b{font-family:var(--f-display);font-weight:500;font-size:.92rem}
+.care button span{font-size:.62rem;color:var(--muted);line-height:1.3;text-align:center}
+.care button[aria-pressed="true"]{border-color:var(--accent);background:var(--soft)}
+.primary{border:0;background:var(--ink);color:var(--surface);font-family:var(--f-display);font-size:.95rem;letter-spacing:.2em;padding:12px 18px;border-radius:var(--r);cursor:pointer}
+.primary:disabled{opacity:.4;cursor:default}
+.ghost{border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.84rem;padding:8px 14px;border-radius:var(--r);cursor:pointer}
+.link{border:0;background:transparent;color:var(--accent);font:inherit;font-size:.84rem;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toast{font-size:.84rem;color:var(--good);min-height:1.3em}
+
+.prog{height:4px;background:var(--line);position:relative}
+.prog i{position:absolute;inset:0 auto 0 0;background:var(--accent)}
+.rows{display:flex;flex-direction:column;gap:6px}
+.row{display:grid;grid-template-columns:7.5em minmax(0,1fr) 2.4em;gap:10px;align-items:center;font-size:.84rem}
+.row .bar{height:6px;background:var(--line);position:relative}
+.row .bar i{position:absolute;inset:0 auto 0 0;background:var(--c,var(--accent))}
+.row .n{text-align:right;font-family:var(--f-display);font-variant-numeric:tabular-nums}
+.row .nm{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .nm i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--c)}
+.manual{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:.8rem}
+.rec{border-bottom:1px solid var(--line);padding:8px 0;display:grid;grid-template-columns:4.2em minmax(0,1fr) auto;gap:10px;align-items:start;font-size:.86rem}
+.rec .d{color:var(--muted);font-size:.78rem;font-variant-numeric:tabular-nums}
+.rec .t{overflow-wrap:anywhere}
+.rec .t small{display:block;color:var(--muted);font-size:.74rem}
+.note{font-size:.76rem;color:var(--muted);line-height:1.7}
+.banner{border-left:2px solid var(--accent);background:var(--soft);padding:10px 14px;font-size:.88rem}
+@media (max-width:420px){.care{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header><h1>こころ育て</h1><div class="date" id="today"></div></header>
+
+  <section class="world" aria-label="こころの小さな世界">
+    <canvas id="sky" aria-hidden="true"></canvas>
+    <canvas id="gl" aria-label="育っていくこころのボール。なぞると回せます"></canvas>
+    <canvas id="fx" aria-hidden="true"></canvas>
+    <div class="wtop">
+      <div class="stage" id="stageName">光の種<small id="formName"></small></div>
+      <div class="wx" id="wx"><b>—</b><br></div>
+    </div>
+    <div class="wbot" id="wbot"></div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-v="grow" aria-selected="true">育てる</button>
+    <button role="tab" data-v="log" aria-selected="false">記録</button>
+    <button role="tab" data-v="set" aria-selected="false">価値と設定</button>
+  </nav>
+
+  <section class="view" id="v-grow"></section>
+  <section class="view" id="v-log" hidden></section>
+  <section class="view" id="v-set" hidden></section>
+</div>
+
+<script src="../three.min.js"></script>
+<script>
+(function(){
+"use strict";
+const T3=window.THREE;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const pad=n=>String(n).padStart(2,"0");
+const dkey=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const wd=["日","月","火","水","木","金","土"];
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+function load(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb}catch(e){return fb}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const now=new Date();$("#today").textContent=(now.getMonth()+1)+"月"+now.getDate()+"日（"+wd[now.getDay()]+"）";
+
+/* ---------- 決まりごと ---------- */
+const CARE=[["rest","休む","眠る・休息",[30,70,74],"灯りのボール"],["move","動く","散歩・運動",[150,45,62],"はずむボール"],["connect","つながる","話す・会う",[14,62,72],"ぬくもりのボール"],
+  ["challenge","挑戦する","初めて・苦手",[210,45,70],"結晶のボール"],["tidy","ととのえる","片づけ・振り返り",[262,25,78],"澄んだボール"]];
+const CARE_MAP=Object.fromEntries(CARE.map(c=>[c[0],c]));
+const STRENGTHS=[["好奇心",48],["向学心",34],["創造性",292],["勇気",8],["粘り強さ",22],["誠実さ",200],["思いやり",340],["感謝",58],["ユーモア",80],["チームワーク",160],["公平さ",232],["自分をととのえる力",272]];
+const SCOL=Object.fromEntries(STRENGTHS.map(s=>[s[0],"hsl("+s[1]+",62%,62%)"]));
+const VALUE_IDEAS=["家族","パートナー","友人","仕事","学び・成長","健康","誠実さ","やさしさ","挑戦","遊び・楽しさ","人の役に立つ","自然","創ること","落ち着き","自立","感謝"];
+const MOON_HUES=[200,38,320,140,265];
+const STAGES=[[0,"光の種"],[3,"小さな玉"],[10,"ボール"],[25,"かがやくボール"],[50,"星"]];
+const HOME={name:"川崎市麻生区",lat:35.6037,lon:139.5079};
+
+/* ---------- 記録 ---------- */
+const KEY="kokoro-grow-v1";
+let st=load(KEY,null);if(!st||!Array.isArray(st.records))st={values:[],records:[]};
+const persist=()=>save(KEY,st);
+const points=()=>st.records.length;
+const stageIdx=()=>{let i=0;STAGES.forEach((s,k)=>{if(points()>=s[0])i=k});return i};
+function careCounts(){const c={};CARE.forEach(x=>c[x[0]]=0);st.records.forEach(r=>{if(c[r.care]!=null)c[r.care]++});return c}
+function formOf(){const n=points();if(n<5)return null;const c=careCounts();const top=CARE.map(x=>[x[0],c[x[0]]]).sort((a,b)=>b[1]-a[1]);
+  if(top[0][1]/n<.35)return{key:"rainbow",name:"虹のボール"};return{key:top[0][0],name:CARE_MAP[top[0][0]][4]}}
+function valueCounts(){const c={};st.values.forEach(v=>c[v]=0);st.records.forEach(r=>(r.values||[]).forEach(v=>{if(c[v]!=null)c[v]++}));return c}
+function strengthCuts(){const out=[];st.records.forEach(r=>(r.strengths||[]).forEach(s=>out.push(s)));return out}
+const rainDays=()=>st.records.filter(r=>r.tough).length;
+
+/* ---------- 天気・季節・月 ---------- */
+const SEKKI=[[1,6,"小寒"],[1,20,"大寒"],[2,4,"立春"],[2,19,"雨水"],[3,5,"啓蟄"],[3,20,"春分"],[4,4,"清明"],[4,20,"穀雨"],[5,5,"立夏"],[5,21,"小満"],[6,5,"芒種"],[6,21,"夏至"],[7,7,"小暑"],[7,23,"大暑"],[8,7,"立秋"],[8,23,"処暑"],[9,7,"白露"],[9,23,"秋分"],[10,8,"寒露"],[10,23,"霜降"],[11,7,"立冬"],[11,22,"小雪"],[12,7,"大雪"],[12,21,"冬至"]];
+function sekki(d){let cur=SEKKI[SEKKI.length-1][2];for(const s of SEKKI){if(d.getMonth()+1>s[0]||(d.getMonth()+1===s[0]&&d.getDate()>=s[1]))cur=s[2]}return cur}
+function moonAge(d){const ref=Date.UTC(2000,0,6,18,14);return(((d.getTime()-ref)/864e5)%29.530588+29.530588)%29.530588}
+function moonName(a){return a<1.5?"新月":a<5.5?"三日月":a<9?"上弦の月":a<13.5?"十三夜":a<16?"満月":a<20?"十六夜を過ぎた月":a<24?"下弦の月":a<28?"有明の月":"新月"}
+const WX={clear:"晴れ",cloudy:"くもり",fog:"霧",rain:"雨",snow:"雪",storm:"雷雨"};
+function wxFromCode(c){if(c===0||c===1)return"clear";if(c===2||c===3)return"cloudy";if(c===45||c===48)return"fog";if((c>=51&&c<=67)||(c>=80&&c<=82))return"rain";if((c>=71&&c<=77)||c===85||c===86)return"snow";if(c>=95)return"storm";return"cloudy"}
+let weather=load("kokoro-grow-wx",null);
+const wxFresh=()=>weather&&weather.src==="live"&&Date.now()-weather.at<30*60e3;
+async function fetchWeather(){
+  if(wxFresh())return;
+  try{const u="https://api.open-meteo.com/v1/forecast?latitude="+HOME.lat+"&longitude="+HOME.lon+"&current=temperature_2m,weather_code,wind_speed_10m,is_day&wind_speed_unit=ms&timezone=Asia%2FTokyo";
+    const ctl=new AbortController();setTimeout(()=>ctl.abort(),8000);
+    const r=await fetch(u,{signal:ctl.signal});if(!r.ok)throw 0;const j=await r.json();const c=j.current;
+    weather={src:"live",at:Date.now(),kind:wxFromCode(c.weather_code),temp:Math.round(c.temperature_2m),wind:c.wind_speed_10m,day:c.is_day===1};save("kokoro-grow-wx",weather)}
+  catch(_){if(!weather||weather.src==="live"&&Date.now()-weather.at>6*3600e3)weather={src:"none",at:Date.now(),kind:null}}
+  renderWx();if(current==="grow")renderGrow();
+}
+function wxNow(){const h=new Date().getHours();const day=weather&&weather.src==="live"?weather.day:(h>=6&&h<17);
+  return{kind:weather&&weather.kind||"clear",temp:weather&&weather.temp,wind:weather&&weather.wind||0,day,dusk:h>=16&&h<18||h>=5&&h<7,known:!!(weather&&weather.kind)}}
+function isTough(w){return["rain","snow","storm","fog"].includes(w.kind)||(w.temp!=null&&(w.temp<=5||w.temp>=33))||w.wind>=9}
+function renderWx(){const w=wxNow(),d=new Date();
+  const t=w.known?(WX[w.kind]+(w.temp!=null?" "+w.temp+"℃":"")):"天気：未取得";
+  $("#wx").innerHTML="<b>"+esc(t)+"</b><br>"+(weather&&weather.src==="live"?esc(HOME.name)+"<br>":"")+esc(sekki(d)+"・"+moonName(moonAge(d)));
+  $("#wbot").textContent=w.known&&isTough(w)?(w.kind==="rain"||w.kind==="storm"?"雨の":w.kind==="snow"?"雪の":w.kind==="fog"?"霧の":w.temp<=5?"寒い":w.temp>=33?"暑い":"風が強い")+"日も、灯りは消えない。":""}
+
+/* ---------- 世界の描画（空・地面） ---------- */
+const sky=$("#sky"),fx=$("#fx"),gl=$("#gl"),sctx=sky.getContext("2d"),fctx=fx.getContext("2d");
+let W=0,H=0,DPR=1;
+function resize(){DPR=Math.min(2,devicePixelRatio||1);const r=gl.getBoundingClientRect();W=r.width;H=r.height;[sky,fx].forEach(c=>{c.width=W*DPR;c.height=H*DPR;c.getContext("2d").setTransform(DPR,0,0,DPR,0,0)});if(renderer){renderer.setPixelRatio(DPR);renderer.setSize(W,H,false);camera.aspect=W/H;camera.updateProjectionMatrix()}}
+const SKY={day:{clear:["#7fb2de","#dce9f2"],cloudy:["#a7b2bd","#dfe3e6"],fog:["#c3c8cc","#e8eaea"],rain:["#6f7c8a","#aeb7bf"],snow:["#b9c4cf","#eef1f4"],storm:["#4f5967","#8c96a1"]},
+  night:{clear:["#0f1530","#2a3358"],cloudy:["#1b2030","#363c4c"],fog:["#2a2e36","#4a4f57"],rain:["#151a24","#2d343f"],snow:["#262e3e","#4b5466"],storm:["#0e1118","#252b36"]}};
+const groundHash=i=>{const x=Math.sin(i*127.1)*43758.5453;return x-Math.floor(x)};
+function drawSky(t,w){
+  const pal=SKY[w.day?"day":"night"][w.kind]||SKY.day.clear;
+  const g=sctx.createLinearGradient(0,0,0,H);g.addColorStop(0,pal[0]);g.addColorStop(.75,pal[1]);sctx.fillStyle=g;sctx.fillRect(0,0,W,H);
+  if(w.dusk&&(w.kind==="clear"||w.kind==="cloudy")){const d=sctx.createLinearGradient(0,H*.3,0,H*.8);d.addColorStop(0,"rgba(240,160,120,0)");d.addColorStop(1,"rgba(240,160,120,.35)");sctx.fillStyle=d;sctx.fillRect(0,0,W,H)}
+  // 星と月（夜）
+  if(!w.day){if(w.kind==="clear"){sctx.fillStyle="#fff";for(let i=0;i<60;i++){const x=groundHash(i)*W,y=groundHash(i+99)*H*.55,a=.3+.5*Math.abs(Math.sin(t*.8+i));sctx.globalAlpha=a;sctx.fillRect(x,y,1.3,1.3)}sctx.globalAlpha=1}
+    drawMoonPhase(W*.82,H*.2,13,moonAge(new Date()),w.kind==="clear"?1:.35)}
+  else if(w.kind==="clear"){const s=sctx.createRadialGradient(W*.84,H*.16,0,W*.84,H*.16,70);s.addColorStop(0,"rgba(255,248,225,.95)");s.addColorStop(.25,"rgba(255,244,210,.5)");s.addColorStop(1,"rgba(255,244,210,0)");sctx.fillStyle=s;sctx.fillRect(0,0,W,H)}
+  // 雲
+  if(["cloudy","rain","storm","snow","fog"].includes(w.kind)){const n=w.kind==="cloudy"?5:7;for(let i=0;i<n;i++){const x=((groundHash(i+5)*W*1.4+t*(6+w.wind*2))%(W*1.4))-W*.2,y=H*(.08+groundHash(i+11)*.3),r=40+groundHash(i+3)*50;
+    const c=sctx.createRadialGradient(x,y,0,x,y,r);const col=w.day?(w.kind==="cloudy"?"255,255,255":"200,206,214"):"90,96,110";c.addColorStop(0,"rgba("+col+",.55)");c.addColorStop(1,"rgba("+col+",0)");sctx.fillStyle=c;sctx.beginPath();sctx.ellipse(x,y,r*1.6,r*.7,0,0,Math.PI*2);sctx.fill()}}
+  if(w.kind==="storm"&&!reduce&&Math.sin(t*1.7)>.995){sctx.fillStyle="rgba(255,255,255,.35)";sctx.fillRect(0,0,W,H)}
+  // 地面（丘）
+  const gy=H*.86;sctx.beginPath();sctx.moveTo(0,H);sctx.lineTo(0,gy+10);sctx.quadraticCurveTo(W*.5,gy-18,W,gy+10);sctx.lineTo(W,H);sctx.closePath();
+  const gg=sctx.createLinearGradient(0,gy-18,0,H);const gc=w.kind==="snow"?(w.day?["#e9edf1","#cdd4db"]:["#5a6272","#3a404c"]):(w.day?["#7d9478","#5d7158"]:["#26302a","#18201b"]);
+  gg.addColorStop(0,gc[0]);gg.addColorStop(1,gc[1]);sctx.fillStyle=gg;sctx.fill();
+  // 雨の日のがんばり（地面の灯り）
+  const n=rainDays();for(let i=0;i<Math.min(n,60);i++){const x=W*(.06+groundHash(i+300)*.88);const yy=gy+8+(Math.abs(x-W*.5)/(W*.5))**2*-0+groundHash(i+400)*(H-gy-14)+((x-W*.5)/(W*.5))**2*-6;
+    const a=.55+.35*Math.sin(t*1.3+i);const r=2.2;const gl2=sctx.createRadialGradient(x,yy,0,x,yy,9);gl2.addColorStop(0,"rgba(255,226,160,"+(.7*a)+")");gl2.addColorStop(1,"rgba(255,226,160,0)");
+    sctx.fillStyle=gl2;sctx.fillRect(x-9,yy-9,18,18);sctx.fillStyle="rgba(255,240,205,"+a+")";sctx.beginPath();sctx.arc(x,yy,r,0,Math.PI*2);sctx.fill()}
+}
+function drawMoonPhase(x,y,r,age,alpha){
+  const k=age/29.530588;sctx.save();sctx.globalAlpha=alpha;
+  const g=sctx.createRadialGradient(x,y,r*.6,x,y,r*3);g.addColorStop(0,"rgba(255,250,225,.25)");g.addColorStop(1,"rgba(255,250,225,0)");sctx.fillStyle=g;sctx.fillRect(x-r*3,y-r*3,r*6,r*6);
+  sctx.fillStyle="rgba(60,66,84,.6)";sctx.beginPath();sctx.arc(x,y,r,0,Math.PI*2);sctx.fill();
+  sctx.fillStyle="#fbf3d6";sctx.beginPath();
+  const right=k<.5, c=Math.cos(k*2*Math.PI);
+  sctx.arc(x,y,r,-Math.PI/2,Math.PI/2,!right);sctx.ellipse(x,y,Math.abs(c)*r,r,0,Math.PI/2,-Math.PI/2,(c>0)===right);sctx.fill();sctx.restore()}
+
+/* ---------- 3D：育つボール・価値の月・強みの面 ---------- */
+let renderer=null,scene,camera,body,bodyMat,corona,moonGroup,moons=[];
+const Q=T3?new T3.Quaternion():null,Wv=T3?new T3.Vector3(0,.25,0):null;
+function makeEnv(){const env=new T3.Scene(),eg=new T3.SphereGeometry(10,32,16),cols=[];
+  const top=new T3.Color(0xf4f4f6),mid=new T3.Color(0x7d828c),bot=new T3.Color(0x1d2026);
+  for(let i=0;i<eg.attributes.position.count;i++){const y=eg.attributes.position.getY(i)/10;const c=y>0?mid.clone().lerp(top,Math.pow(y,.7)):mid.clone().lerp(bot,Math.min(1,-y*1.4));cols.push(c.r,c.g,c.b)}
+  eg.setAttribute("color",new T3.Float32BufferAttribute(cols,3));env.add(new T3.Mesh(eg,new T3.MeshBasicMaterial({vertexColors:true,side:T3.BackSide})));
+  const p=new T3.Mesh(new T3.PlaneGeometry(7,3.5),new T3.MeshBasicMaterial({color:0xffffff,side:T3.DoubleSide}));p.position.set(-4,5,4);p.lookAt(0,0,0);env.add(p);
+  return new T3.PMREMGenerator(renderer).fromScene(env,.03).texture}
+function glowTex(){const c=document.createElement("canvas");c.width=c.height=128;const g=c.getContext("2d"),r=g.createRadialGradient(64,64,0,64,64,64);
+  r.addColorStop(0,"rgba(255,255,255,1)");r.addColorStop(.3,"rgba(255,255,255,.45)");r.addColorStop(1,"rgba(255,255,255,0)");g.fillStyle=r;g.fillRect(0,0,128,128);return new T3.CanvasTexture(c)}
+let GLOW=null;
+function initGL(){
+  if(!T3)return false;
+  try{renderer=new T3.WebGLRenderer({canvas:gl,antialias:true,alpha:true,preserveDrawingBuffer:true})}catch(e){renderer=null;return false}
+  renderer.setClearColor(0,0);renderer.outputEncoding=T3.sRGBEncoding;
+  scene=new T3.Scene();camera=new T3.PerspectiveCamera(30,1,.1,100);camera.position.set(0,.35,9);camera.lookAt(0,.15,0);
+  scene.environment=makeEnv();GLOW=glowTex();
+  scene.add(new T3.HemisphereLight(0xffffff,0x30343c,.55));const key=new T3.DirectionalLight(0xffffff,1);key.position.set(-3,4,5);scene.add(key);
+  bodyMat=new T3.MeshPhysicalMaterial({vertexColors:true,roughness:.3,metalness:.05,clearcoat:.6,clearcoatRoughness:.15});
+  body=new T3.Mesh(new T3.BufferGeometry(),bodyMat);scene.add(body);
+  const halo=new T3.Sprite(new T3.SpriteMaterial({map:GLOW,color:0xffffff,transparent:true,opacity:.5,blending:T3.AdditiveBlending,depthWrite:false}));halo.renderOrder=-1;scene.add(halo);body.userData.halo=halo;
+  corona=new T3.Sprite(new T3.SpriteMaterial({map:GLOW,color:0xfff1c9,transparent:true,opacity:0,blending:T3.AdditiveBlending,depthWrite:false}));scene.add(corona);
+  moonGroup=new T3.Group();scene.add(moonGroup);
+  return true}
+const glOK=initGL();
+resize();addEventListener("resize",resize);
+
+// 面のカット：球を、強みの数だけ平面で切り取る（切り口の向きは球面上に均等に配る）
+const CUT_DIRS=[];for(let k=0;k<64;k++){const y=1-(k+.5)/64*2,r=Math.sqrt(1-y*y),ph=k*Math.PI*(3-Math.sqrt(5));CUT_DIRS.push(new (T3?T3.Vector3:Object)(Math.cos(ph)*r,y,Math.sin(ph)*r))}
+function buildBody(){
+  if(!glOK)return;
+  const cuts=strengthCuts().map((s,i)=>({dir:CUT_DIRS[(i*29)%64],col:new T3.Color(SCOL[s]||"#fff").convertSRGBToLinear(),d:.955-.012*Math.floor(i/64)}));
+  const form=formOf();const base=new T3.Color();const fc=form&&form.key!=="rainbow"?CARE_MAP[form.key][3]:[40,30,78];
+  base.setHSL(fc[0]/360,fc[1]/100,fc[2]/100).convertSRGBToLinear();
+  const src=new T3.IcosahedronGeometry(1,stageIdx()>=2?5:4).toNonIndexed();const P=src.attributes.position.array,n=P.length/3;
+  const v=new T3.Vector3();
+  for(let i=0;i<n;i++){v.set(P[3*i],P[3*i+1],P[3*i+2]).normalize();let r=1;for(const c of cuts){const dt=v.dot(c.dir);if(dt>c.d)r=Math.min(r,c.d/dt)}P[3*i]=v.x*r;P[3*i+1]=v.y*r;P[3*i+2]=v.z*r}
+  const N=new Float32Array(P.length),C=new Float32Array(P.length);const a=new T3.Vector3(),b=new T3.Vector3(),c3=new T3.Vector3(),cen=new T3.Vector3(),fn=new T3.Vector3();
+  const rainbow=form&&form.key==="rainbow";
+  for(let f=0;f<n/3;f++){a.fromArray(P,9*f);b.fromArray(P,9*f+3);c3.fromArray(P,9*f+6);cen.copy(a).add(b).add(c3).divideScalar(3);
+    let hit=null,best=-1;for(const c of cuts){const dt=cen.clone().normalize().dot(c.dir);const onPlane=Math.abs(cen.dot(c.dir)-c.d)<.004&&Math.abs(a.dot(c.dir)-c.d)<.004&&Math.abs(b.dot(c.dir)-c.d)<.004;if(onPlane&&dt>best){best=dt;hit=c}}
+    let col=base;if(rainbow){const h=(Math.atan2(cen.z,cen.x)/Math.PI*.5+.5);col=new T3.Color().setHSL(h,.35,.74).convertSRGBToLinear()}
+    if(hit){fn.copy(hit.dir);col=hit.col}
+    for(let k=0;k<3;k++){const o=9*f+3*k;if(hit){N[o]=fn.x;N[o+1]=fn.y;N[o+2]=fn.z}else{v.fromArray(P,o).normalize();N[o]=v.x;N[o+1]=v.y;N[o+2]=v.z}C[o]=col.r;C[o+1]=col.g;C[o+2]=col.b}}
+  const g=new T3.BufferGeometry();g.setAttribute("position",new T3.Float32BufferAttribute(P,3));g.setAttribute("normal",new T3.Float32BufferAttribute(N,3));g.setAttribute("color",new T3.Float32BufferAttribute(C,3));
+  body.geometry.dispose();body.geometry=g;src.dispose();
+  // 姿ごとの質感
+  const k=form?form.key:"seed";
+  const M={seed:[.25,.3,0],rest:[.35,.4,.05],move:[.22,.7,.02],connect:[.3,.5,.03],challenge:[.08,1,.25],tidy:[.12,.9,.08],rainbow:[.15,.8,.06]}[k];
+  bodyMat.roughness=M[0];bodyMat.clearcoat=M[1];bodyMat.metalness=M[2];bodyMat.emissive.copy(base);bodyMat.needsUpdate=true;
+  buildMoons()}
+function buildMoons(){
+  if(!glOK)return;while(moonGroup.children.length)moonGroup.remove(moonGroup.children[0]);moons=[];
+  const vc=valueCounts();
+  st.values.forEach((name,i)=>{const cnt=vc[name]||0;const col=new T3.Color().setHSL(MOON_HUES[i%5]/360,.5,.68).convertSRGBToLinear();
+    const m=new T3.Mesh(new T3.SphereGeometry(1,24,16),new T3.MeshPhysicalMaterial({color:col,roughness:.35,clearcoat:.6,emissive:col,emissiveIntensity:.15+Math.min(.6,cnt*.05)}));
+    const s=.07+.035*Math.sqrt(cnt);m.scale.setScalar(Math.min(.26,s));
+    const glow=new T3.Sprite(new T3.SpriteMaterial({map:GLOW,color:col,transparent:true,opacity:Math.min(.8,.15+cnt*.06),blending:T3.AdditiveBlending,depthWrite:false}));glow.scale.setScalar(Math.min(.26,s)*5);
+    const ring=new T3.LineLoop(new T3.BufferGeometry().setFromPoints(Array.from({length:96},(_,k)=>new T3.Vector3(Math.cos(k/96*Math.PI*2),0,Math.sin(k/96*Math.PI*2)))),new T3.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.12}));
+    const orbit=new T3.Group();orbit.rotation.set(.35+i*.18,0,(i%2?-1:1)*(.12+i*.07));const rad=1.55+i*.32;ring.scale.setScalar(rad);orbit.add(ring);
+    const holder=new T3.Group();holder.add(m);holder.add(glow);orbit.add(holder);moonGroup.add(orbit);
+    moons.push({holder,rad,speed:.35/(1+i*.35),phase:i*1.7})})}
+
+let bodyScale=.25,pulse=0,dragging=null,lastTouch=0;
+gl.addEventListener("pointerdown",e=>{try{gl.setPointerCapture(e.pointerId)}catch(_){}dragging={x:e.clientX,y:e.clientY,t:performance.now(),moved:0};lastTouch=performance.now()});
+gl.addEventListener("pointermove",e=>{if(!dragging||!glOK)return;const dx=e.clientX-dragging.x,dy=e.clientY-dragging.y;dragging.x=e.clientX;dragging.y=e.clientY;dragging.moved+=Math.abs(dx)+Math.abs(dy);
+  const ang=Math.hypot(dx,dy)/120;if(ang>0){const ax=new T3.Vector3(dy,dx,0).normalize();Q.premultiply(new T3.Quaternion().setFromAxisAngle(ax,ang));Wv.set(dy,dx,0).multiplyScalar(.02)}lastTouch=performance.now()});
+gl.addEventListener("pointerup",()=>{if(dragging&&dragging.moved<8){pulse=1;burst(W/2,H*.45,8)}dragging=null});
+gl.addEventListener("pointercancel",()=>{dragging=null});
+["contextmenu","selectstart"].forEach(t=>$(".world").addEventListener(t,e=>e.preventDefault()));
+
+const parts=[],drops=[];
+function burst(x,y,n){if(reduce)return;for(let i=0;i<n;i++)parts.push({x:x+(Math.random()-.5)*40,y:y+(Math.random()-.5)*30,vx:(Math.random()-.5)*30,vy:-20-Math.random()*40,life:1,hue:40+Math.random()*30})}
+let flying=null;
+let tPrev=performance.now(),t=0;
+function frame(tn){
+  const dt=clamp((tn-tPrev)/1000,0,.04);tPrev=tn;t+=dt;
+  const w=wxNow(),tough=w.known&&isTough(w);
+  drawSky(t,w);
+  // 雨・雪
+  fctx.clearRect(0,0,W,H);
+  if(!reduce&&(w.kind==="rain"||w.kind==="storm"||w.kind==="snow")){
+    const want=w.kind==="snow"?70:120;while(drops.length<want)drops.push({x:Math.random()*W,y:Math.random()*H,v:w.kind==="snow"?20+Math.random()*25:380+Math.random()*200});
+    fctx.strokeStyle=w.day?"rgba(230,238,245,.55)":"rgba(170,185,205,.45)";fctx.fillStyle="rgba(255,255,255,.85)";fctx.lineWidth=1;
+    const sl=(w.wind||2)*6;
+    for(const d of drops){d.y+=d.v*dt;d.x+=(w.kind==="snow"?Math.sin(t+d.v)*10:sl)*dt;if(d.y>H){d.y=-10;d.x=Math.random()*W}if(d.x>W)d.x-=W;
+      if(w.kind==="snow"){fctx.beginPath();fctx.arc(d.x,d.y,1.6,0,Math.PI*2);fctx.fill()}else{fctx.beginPath();fctx.moveTo(d.x,d.y);fctx.lineTo(d.x-sl*.04,d.y-12);fctx.stroke()}}
+  }else drops.length=0;
+  if(w.kind==="fog"){fctx.fillStyle="rgba(235,238,240,.25)";fctx.fillRect(0,0,W,H)}
+  // 3D
+  const si=stageIdx(),target=[.28,.5,.78,.92,1.02][si];bodyScale=clamp(bodyScale+(target-bodyScale)*Math.min(1,dt*2),.1,1.2);
+  if(glOK){
+    const lift=reduce?0:(tough?.04:.1)*Math.sin(t*(tough?.6:1));
+    body.position.set(0,.2+lift,0);
+    const sc=bodyScale*(1+.06*pulse*Math.sin(t*20));pulse=Math.max(0,pulse-dt*1.5);body.scale.setScalar(sc);
+    if(performance.now()-lastTouch>2500){Q.premultiply(new T3.Quaternion().setFromAxisAngle(new T3.Vector3(0,1,0),dt*(reduce?.05:.18)))}
+    Q.premultiply(new T3.Quaternion().setFromAxisAngle(Wv.clone().normalize(),Wv.length()*dt));Wv.multiplyScalar(Math.exp(-dt*2));
+    body.quaternion.copy(Q);
+    const bright=w.day&&(w.kind==="snow"||w.kind==="fog"||w.kind==="clear")?.55:1;const glowA=((tough?.28:.45)+.25*pulse+(si===0?.4:0))*bright;bodyMat.emissiveIntensity=(si===0?.9:tough?.18:.1)+.3*pulse;
+    const halo=body.userData.halo;halo.position.copy(body.position);halo.scale.setScalar(sc*(si===0?7:3.4));halo.material.opacity=glowA;
+    halo.material.color.copy(bodyMat.emissive).lerp(new T3.Color(1,1,1),.5);
+    corona.position.copy(body.position);corona.material.opacity=si>=4?(.55+.1*Math.sin(t*1.5))*bright:0;corona.scale.setScalar(sc*5.5);
+    moonGroup.position.copy(body.position);moonGroup.scale.setScalar(.6+bodyScale*.5);
+    moons.forEach(m=>{const a=m.phase+t*m.speed*(reduce?.3:1);m.holder.position.set(Math.cos(a)*m.rad,0,Math.sin(a)*m.rad)});
+    renderer.render(scene,camera);
+  }
+  // 雨の日：ボールの上の小さな灯りの傘
+  if(tough){const cx=W/2,cy=H*.42,R=Math.min(W,H)*.2*bodyScale/0.8;fctx.save();fctx.strokeStyle="rgba(255,236,190,.35)";fctx.lineWidth=2;fctx.beginPath();fctx.arc(cx,cy,Math.max(1,R*1.25),Math.PI*1.15,Math.PI*1.85);fctx.stroke();fctx.restore()}
+  // 光の粒・とんでくる記録
+  for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.life-=dt*.8;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.life<=0){parts.splice(i,1);continue}
+    fctx.fillStyle="hsla("+p.hue+",90%,75%,"+p.life+")";fctx.beginPath();fctx.arc(p.x,p.y,Math.max(.5,1.5+2.5*p.life),0,Math.PI*2);fctx.fill()}
+  if(flying){flying.t+=dt;const q=clamp(flying.t/1.2,0,1),e=q<.5?2*q*q:1-Math.pow(-2*q+2,2)/2;const x=W/2,y=H-20+(H*.45-(H-20))*e;
+    fctx.fillStyle="rgba(255,240,200,"+(1-q*.6)+")";fctx.beginPath();fctx.arc(x,y,6*(1-q*.5),0,Math.PI*2);fctx.fill();
+    if(q>=1){flying=null;pulse=1;burst(W/2,H*.45,16)}}
+  requestAnimationFrame(frame)}
+
+/* ---------- 画面 ---------- */
+let draft={text:"",care:"",values:[],strengths:[]};let current="grow",toast="";
+function stageInfo(){const i=stageIdx(),n=points();const next=STAGES[i+1];return{name:STAGES[i][1],next:next?next[1]:null,need:next?next[0]-n:0,frac:next?(n-STAGES[i][0])/(next[0]-STAGES[i][0]):1}}
+function renderHead(){const si=stageInfo(),f=formOf();$("#stageName").innerHTML=esc(si.name)+'<small>'+esc(f?f.name:(points()<5?"姿は記録5つから":""))+'</small>'}
+function renderGrow(){
+  const v=$("#v-grow"),si=stageInfo(),w=wxNow();
+  let h="";
+  if(!st.values.length)h+='<div class="banner">はじめに「価値と設定」で、大切にしたい価値を3〜5つ選んでください。ボールのまわりを回る月になります。<br><button class="link" data-goto="set">価値を選ぶ</button></div>';
+  if(!w.known)h+='<div class="manual"><span class="muted">きょうの天気：</span>'+Object.entries(WX).map(([k,n])=>'<button class="chip" data-wx="'+k+'">'+n+'</button>').join("")+'</div>';
+  h+='<div class="section"><h2>きょう、心のためにしたこと</h2>'+
+    '<div class="field"><textarea id="g-text" placeholder="例：早めに布団に入った／同僚に自分から声をかけた">'+esc(draft.text)+'</textarea></div>'+
+    '<div class="field"><span class="lbl">お世話の種類</span><div class="care">'+CARE.map(c=>'<button data-care="'+c[0]+'" aria-pressed="'+(draft.care===c[0])+'"><b>'+c[1]+'</b><span>'+c[2]+'</span></button>').join("")+'</div></div>'+
+    (st.values.length?'<div class="field"><span class="lbl">沿っていた価値（任意）</span><div class="chips">'+st.values.map((x,i)=>'<button class="chip" data-val="'+esc(x)+'" aria-pressed="'+draft.values.includes(x)+'" style="--c:hsl('+MOON_HUES[i%5]+',50%,62%)"><span class="dot"></span>'+esc(x)+'</button>').join("")+'</div></div>':"")+
+    '<div class="field"><span class="lbl">使った強み（任意）</span><div class="chips">'+STRENGTHS.map(s=>'<button class="chip" data-str="'+s[0]+'" aria-pressed="'+draft.strengths.includes(s[0])+'" style="--c:'+SCOL[s[0]]+'"><span class="dot"></span>'+s[0]+'</button>').join("")+'</div><span class="hint">選んだ強みは、その色の面としてボールに刻まれます。</span></div>'+
+    '<div class="btnrow"><button class="primary" id="g-save" '+(draft.care&&draft.text.trim()?"":"disabled")+'>記録する</button><span class="hint">'+(w.known&&isTough(w)?"きょうの記録は「雨の日のがんばり」として、地面に灯りがともります。":"")+'</span></div><div class="toast" id="g-toast">'+esc(toast)+'</div></div>';
+  h+='<div class="section"><h2>育ち</h2><p>'+esc(si.name)+(si.next?'　<span class="small muted">「'+esc(si.next)+'」まであと '+si.need+' 回</span>':'　<span class="small muted">いちばん大きな姿です</span>')+'</p><div class="prog"><i style="width:'+Math.round(si.frac*100)+'%"></i></div>'+
+    '<div class="rows">'+(()=>{const c=careCounts(),mx=Math.max(1,...Object.values(c));return CARE.map(x=>'<div class="row"><span class="nm">'+x[1]+'</span><span class="bar"><i style="width:'+(c[x[0]]/mx*100)+'%;--c:hsl('+x[3][0]+','+x[3][1]+'%,'+(x[3][2]-14)+'%)"></i></span><span class="n">'+c[x[0]]+'</span></div>').join("")})()+'</div>'+
+    '<p class="note">いちばん多いお世話の種類で、ボールの姿が決まります（記録5つから）。偏りが少ないと「虹のボール」になります。</p></div>';
+  if(st.values.length){const vc=valueCounts(),mx=Math.max(1,...Object.values(vc));h+='<div class="section"><h2>価値の月</h2><div class="rows">'+st.values.map((x,i)=>'<div class="row"><span class="nm" style="--c:hsl('+MOON_HUES[i%5]+',50%,62%)"><i></i>'+esc(x)+'</span><span class="bar"><i style="width:'+((vc[x]||0)/mx*100)+'%;--c:hsl('+MOON_HUES[i%5]+',45%,55%)"></i></span><span class="n">'+(vc[x]||0)+'</span></div>').join("")+'</div></div>'}
+  const sc={};strengthCuts().forEach(s=>sc[s]=(sc[s]||0)+1);const used=STRENGTHS.filter(s=>sc[s[0]]);
+  h+='<div class="section"><h2>強みの面</h2>'+(used.length?'<div class="rows">'+used.sort((a,b)=>sc[b[0]]-sc[a[0]]).map(s=>'<div class="row"><span class="nm" style="--c:'+SCOL[s[0]]+'"><i></i>'+s[0]+'</span><span class="bar"><i style="width:'+(sc[s[0]]/Math.max(...Object.values(sc))*100)+'%;--c:'+SCOL[s[0]]+'"></i></span><span class="n">'+sc[s[0]]+'</span></div>').join("")+'</div>':'<p class="small muted">まだ面はありません。強みを選んで記録すると、ボールに面が刻まれます。</p>')+
+    '<p class="note">雨の日のがんばり：'+rainDays()+'　（地面の灯りの数）</p></div>';
+  v.innerHTML=h}
+function renderLog(){
+  const v=$("#v-log"),R=st.records.slice().reverse();
+  let h='<div class="section"><h2>これまでの記録</h2>';
+  if(!R.length)h+='<p class="small muted">まだ記録はありません。</p>';
+  R.forEach(r=>{const p=r.date.split("-");h+='<div class="rec"><span class="d">'+(+p[1])+'/'+(+p[2])+'</span><span class="t">'+esc(r.text)+'<small>'+esc([CARE_MAP[r.care]?CARE_MAP[r.care][1]:"",(r.values||[]).join("・"),(r.strengths||[]).join("・"),r.tough?"雨の日のがんばり":"",r.wx?WX[r.wx]:""].filter(Boolean).join("　"))+'</small></span>'+
+    (delAsk===r.id?'<span class="btnrow"><button class="ghost" data-delok="'+r.id+'">削除</button><button class="link" data-delno="1">やめる</button></span>':'<button class="link" data-del="'+r.id+'">削除</button>')+'</div>'});
+  h+='<p class="note">記録を削除すると、その分の育ちや面も元に戻ります。</p></div>';
+  h+='<div class="section"><h2>データの控え</h2><p class="note">記録はこの端末のこのブラウザだけに保存されます。ときどき控えを取ってください。</p><div class="btnrow"><button class="ghost" id="exp">控えを表示してコピー</button><button class="ghost" id="impOpen">控えから戻す</button></div><textarea id="bk" hidden></textarea><button class="ghost" id="imp" hidden>この内容で戻す</button><div class="toast" id="bkToast"></div></div>';
+  v.innerHTML=h}
+let delAsk=null,valDraft=null,valAdd="";
+function renderSet(){
+  const v=$("#v-set");if(!valDraft)valDraft=st.values.slice();
+  const all=VALUE_IDEAS.concat(valDraft.filter(x=>!VALUE_IDEAS.includes(x)));
+  let h='<div class="section"><h2>大切にしたい価値</h2><p class="small muted">「どう生きたいか」の方向です。3〜5つ選ぶと、それぞれがボールのまわりを回る月になります。目標とちがって、達成して終わりではなく、ずっと向かっていくものです。</p>'+
+    '<div class="chips">'+all.map(x=>'<button class="chip" data-pick="'+esc(x)+'" aria-pressed="'+valDraft.includes(x)+'">'+esc(x)+'</button>').join("")+'</div>'+
+    '<div class="btnrow"><input type="text" id="valAdd" placeholder="ほかの価値を書く" maxlength="12" style="flex:1;min-width:0" value="'+esc(valAdd)+'"><button class="ghost" id="valAddBtn">追加</button></div>'+
+    '<div class="btnrow"><button class="primary" id="valSave" '+(valDraft.length>=1&&valDraft.length<=5?"":"disabled")+'>この価値にする（'+valDraft.length+'/5）</button></div><div class="toast" id="valToast"></div>'+
+    '<p class="note">価値を外すと、その月は見えなくなります（記録は残ります）。</p></div>';
+  h+='<div class="section"><h2>天気について</h2><p class="small">'+esc(HOME.name)+'の、いまの天気を使います。取得できないときは「育てる」で天気を選べます。季節（二十四節気）と月の満ち欠けは、端末の中で計算しています。</p><p class="note">天気の情報：Open-Meteo（open-meteo.com）</p></div>';
+  h+='<div class="section"><h2>このアプリについて</h2><p class="note">こころ育ては、自分の心のためにした小さな行動を、育つボールとして見えるようにするアプリです。お世話しない日があっても、ボールが弱ったり、育ちが減ったりすることはありません。</p></div>';
+  v.innerHTML=h}
+function show(n){current=n;document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===n));["grow","log","set"].forEach(k=>$("#v-"+k).hidden=k!==n);
+  if(n==="grow")renderGrow();if(n==="log")renderLog();if(n==="set"){valDraft=null;renderSet()}}
+document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b)show(b.dataset.v)});
+
+$("#v-grow").addEventListener("input",e=>{if(e.target.id==="g-text"){draft.text=e.target.value;$("#g-save").disabled=!(draft.care&&draft.text.trim())}});
+$("#v-grow").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.goto){show(b.dataset.goto);return}
+  if(b.dataset.wx){weather={src:"manual",at:Date.now(),kind:b.dataset.wx,temp:null,wind:0,day:null};save("kokoro-grow-wx",weather);renderWx();renderGrow();return}
+  if(b.dataset.care){draft.care=draft.care===b.dataset.care?"":b.dataset.care;toast="";renderGrow();return}
+  const tog=(arr,x)=>{const i=arr.indexOf(x);if(i>=0)arr.splice(i,1);else arr.push(x)};
+  if(b.dataset.val){tog(draft.values,b.dataset.val);renderGrow();return}
+  if(b.dataset.str){tog(draft.strengths,b.dataset.str);renderGrow();return}
+  if(b.id==="g-save"){const w=wxNow();const before=stageIdx(),beforeForm=(formOf()||{}).name;
+    st.records.push({id:uid(),date:dkey(new Date()),at:Date.now(),text:draft.text.trim(),care:draft.care,values:draft.values.slice(),strengths:draft.strengths.slice(),wx:w.known?w.kind:null,tough:!!(w.known&&isTough(w))});
+    persist();const after=stageIdx(),f=formOf();
+    toast=after>before?"「"+STAGES[after][1]+"」に育ちました！":(f&&f.name!==beforeForm?"姿が「"+f.name+"」になりました。":"記録しました。ボールが少し育ちました。");
+    draft={text:"",care:"",values:[],strengths:[]};buildBody();renderHead();renderGrow();flying={t:0};window.scrollTo({top:0,behavior:reduce?"auto":"smooth"});return}
+});
+$("#v-log").addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.del){delAsk=b.dataset.del;renderLog();return}
+  if(b.dataset.delno){delAsk=null;renderLog();return}
+  if(b.dataset.delok){st.records=st.records.filter(r=>r.id!==b.dataset.delok);delAsk=null;persist();buildBody();renderHead();renderLog();return}
+  if(b.id==="exp"){const s=JSON.stringify(st),ta=$("#bk");ta.hidden=false;ta.value=s;$("#imp").hidden=true;try{await navigator.clipboard.writeText(s);$("#bkToast").textContent="コピーしました。メモアプリなどに貼って保管してください。"}catch(_){ta.select();$("#bkToast").textContent="下の文字を全選択してコピーしてください。"}return}
+  if(b.id==="impOpen"){const ta=$("#bk");ta.hidden=false;ta.value="";ta.placeholder="控えの文字をここに貼り付け";$("#imp").hidden=false;return}
+  if(b.id==="imp"){try{const d=JSON.parse($("#bk").value);if(!d||!Array.isArray(d.records))throw 0;const ids=new Set(st.records.map(r=>r.id));let n=0;d.records.forEach(r=>{if(r&&r.id&&!ids.has(r.id)){st.records.push(r);n++}});
+    st.records.sort((a,b)=>(a.at||0)-(b.at||0));if(!st.values.length&&Array.isArray(d.values))st.values=d.values.slice(0,5);persist();buildBody();renderHead();renderLog();$("#bkToast").textContent=n+"件を戻しました。"}catch(_){$("#bkToast").textContent="読み込めませんでした。"}return}
+});
+$("#v-set").addEventListener("input",e=>{if(e.target.id==="valAdd")valAdd=e.target.value});
+$("#v-set").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.pick){const x=b.dataset.pick,i=valDraft.indexOf(x);if(i>=0)valDraft.splice(i,1);else if(valDraft.length<5)valDraft.push(x);renderSet();return}
+  if(b.id==="valAddBtn"){const x=valAdd.trim();if(x&&!valDraft.includes(x)&&valDraft.length<5)valDraft.push(x);valAdd="";renderSet();return}
+  if(b.id==="valSave"){st.values=valDraft.slice();persist();buildMoons();renderSet();$("#valToast").textContent="月を入れかえました。";return}
+});
+
+buildBody();renderHead();renderWx();renderGrow();requestAnimationFrame(frame);
+fetchWeather();setInterval(fetchWeather,30*60e3);if("serviceWorker" in navigator&&location.protocol==="https:"){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+})();
+</script>
+</body>
+</html>
