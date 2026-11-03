@@ -1,6 +1,6 @@
 // こころボール：電波がなくても開けるように、アプリ本体を端末に保存しておく
 // アプリを更新したら VERSION の数字を上げる（古い保存分が入れ替わる）
-const VERSION = "kokoro-note-v2";
+const VERSION = "kokoro-note-v3";
 const CORE = [
   "./",
   "index.html",

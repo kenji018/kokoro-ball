@@ -524,8 +524,12 @@ function renderLog(){
     '<div class="btnrow"><button class="ghost" data-tsv="seiri">受けとめるをコピー</button><button class="ghost" data-tsv="assert">伝えるをコピー</button></div>'+
     '<label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tsvHead" checked style="accent-color:var(--accent)">1行目に項目名を入れる（今あるシートに貼り足すときは外す）</label>'+
     '<textarea id="tsvOut" hidden></textarea><div class="toast" id="tsvToast"></div></div>';
-  if(canSync())h+='<div class="section"><h2>Googleスプレッドシートに自動保存</h2><p class="note">設定すると、「記録する」を押すたびに、あなたのGoogleスプレッドシートへ送ります。同じ記録を書き直したときは、その行が上書きされます。</p>'+
-    '<details class="q"><summary>設定のしかた（最初に1回だけ）</summary><div class="body"><ol class="steplist">'+
+  const syncReady=sync.on&&!!sync.url;
+  if(canSync())h+='<div class="section"><h2>Googleスプレッドシートに自動保存</h2>'+
+    '<div class="banner"><b>'+(syncReady?"自動保存：オン":(sync.url?"自動保存：オフ":"自動保存：未設定"))+'</b><br>'+
+    (syncReady?"「記録する」を押すたびに、スプレッドシートへ送ります。":(sync.url?"URLは入っています。下の「記録するたびに自動で送る」にチェックを入れてください。":"下の手順で設定してください。"))+'</div>'+
+    '<p class="note">この設定は、この端末のこのブラウザ（またはホーム画面のアプリ）だけに保存されます。iPhoneのホーム画面のアプリとパソコンのように、使う場所ごとに同じURLを貼ってください。同じ記録を書き直したときは、その行が上書きされます。</p>'+
+    '<details class="q"'+(sync.url?"":" open")+'><summary>'+(sync.url?"設定のしかた（もう一度見る）":"設定のしかた（最初に1回だけ）")+'</summary><div class="body"><ol class="steplist">'+
     '<li>パソコンで、Googleスプレッドシートを新しく作る（名前は自由。例：こころノート記録）</li>'+
     '<li>メニューの「拡張機能」→「Apps Script」を開く</li>'+
     '<li>下の「スクリプトをコピー」を押し、Apps Scriptの画面に最初からある文字をすべて消して貼り付け、保存する</li>'+
@@ -560,7 +564,7 @@ function bindLog(){
       const list=t.id==="syncAll"?store.entries.slice():[{id:"test",kind:"seiri",date:dkey(new Date()),situation:"テスト送信です。この行は消して構いません。",moods:[],thoughts:[],body:[],bodyText:"",action:"",answers:{},kuse:[],alt:"",next:"",savedAt:Date.now()}];
       if(!list.length){out.textContent="まだ記録がありません。";return}
       t.disabled=true;out.textContent="送っています…";
-      try{await pushRows(list);out.textContent=(t.id==="syncAll"?list.length+"件を送りました。":"テストの行を送りました。")+"スプレッドシートを開いて、行が入っているか確かめてください。"}
+      try{await pushRows(list);sync.on=true;save(SYNC_KEY,sync);renderLog();$("#syncToast").textContent=(t.id==="syncAll"?list.length+"件を送りました。":"テストの行を送りました。")+"自動保存をオンにしました。スプレッドシートを開いて、行が入っているか確かめてください。";return}
       catch(_){out.textContent="送れませんでした。電波の状態と、URLが正しいかを確認してください。"}
       finally{t.disabled=false}return}
     if(t.id==="copyGs"){const n=$("#gsNote"),ta=$("#gsOut");if(!gsText){n.textContent="スクリプトを読み込めませんでした。電波のある所で開き直してください。";return}
@@ -570,7 +574,7 @@ function bindLog(){
     if(t.id==="imp"){try{const d=JSON.parse($("#bk").value);if(!d||!Array.isArray(d.entries))throw 0;const ids=new Set(store.entries.map(x=>x.id));let n=0;d.entries.forEach(x=>{if(x&&x.id&&!ids.has(x.id)){store.entries.push(x);n++}});persist();renderLog();$("#bkToast").textContent=n+"件を戻しました。"}catch(_){$("#bkToast").textContent="読み込めませんでした。コピーした文字がすべて貼り付けられているか確認してください。"}return}
   });
 }
-document.addEventListener("change",e=>{const t=e.target;if(t.id==="syncOn"){sync.on=t.checked;sync.url=($("#syncUrl")||{value:sync.url}).value.trim();save(SYNC_KEY,sync)}if(t.id==="syncUrl"){sync.url=t.value.trim();save(SYNC_KEY,sync)}});
+document.addEventListener("change",e=>{const t=e.target;if(t.id==="syncOn"){sync.on=t.checked;sync.url=($("#syncUrl")||{value:sync.url}).value.trim();save(SYNC_KEY,sync);renderLog()}if(t.id==="syncUrl"){sync.url=t.value.trim();save(SYNC_KEY,sync)}});
 function reopen(id){if(!id)return;const b=document.querySelector('[data-del="'+id+'"],[data-delok="'+id+'"]');const d=b&&b.closest("details");if(d)d.open=true}
 
 
@@ -601,7 +605,8 @@ async function pushRows(entries){
     await fetch(sync.url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({rows:rows.slice(i,i+40)})})}
   sync.last=new Date().toLocaleString("ja-JP");save(SYNC_KEY,sync)}
 function autoSync(entry,toastEl){
-  if(!canSync()||!sync.on||!sync.url)return;
+  if(!canSync())return;
+  if(!sync.on||!sync.url){if(toastEl&&sync.url)toastEl.textContent+="（自動保存がオフのため、スプレッドシートには送っていません）";return}
   pushRows([entry]).then(()=>{if(toastEl)toastEl.textContent+="（スプレッドシートにも送りました）"})
     .catch(()=>{if(toastEl)toastEl.textContent+="（スプレッドシートに送れませんでした。電波のある所で「まとめて送る」を押してください）"})}
 
