@@ -157,9 +157,9 @@ const SCOL=Object.fromEntries(STRENGTHS.map(s=>[s[0],"hsl("+s[1]+",62%,62%)"]));
 const VALUE_IDEAS=["家族","パートナー","友人","仕事","学び・成長","健康","誠実さ","やさしさ","挑戦","遊び・楽しさ","人の役に立つ","自然","創ること","落ち着き","自立","感謝"];
 const MOON_HUES=[200,38,320,140,265];
 const STAGES=[[0,"光の種"],[3,"小さな玉"],[10,"ボール"],[25,"かがやくボール"],[50,"星"]];
-const STYLES=[["plain","そのまま"],["watercolor","水彩"],["gouache","絵本"],["pencil","色鉛筆"],["impression","印象派の筆"]];
+const STYLES=[["plain","そのまま",0],["watercolor","水彩",1],["gouache","絵本",2],["impression","印象派の筆",4],["anime","背景画",5],["pastel","パステル",6]];
 let artStyle=load("kokoro-grow-style","plain");if(!STYLES.some(x=>x[0]===artStyle))artStyle="plain";
-const STYLE_IDX=()=>STYLES.findIndex(x=>x[0]===artStyle);
+const STYLE_IDX=()=>(STYLES.find(x=>x[0]===artStyle)||STYLES[0])[2];
 const HOME={name:"川崎市麻生区",lat:35.6037,lon:139.5079};
 
 /* ---------- 記録 ---------- */
@@ -242,6 +242,12 @@ function drawSky(t,w){
   if(!w.day){if(w.kind==="clear"){sctx.fillStyle="#fff";for(let i=0;i<60;i++){const x=groundHash(i)*W,y=groundHash(i+99)*H*.55,a=.3+.5*Math.abs(Math.sin(t*.8+i));sctx.globalAlpha=a;sctx.fillRect(x,y,1.3,1.3)}sctx.globalAlpha=1}
     drawMoonPhase(W*.82,H*.2,13,moonAge(new Date()),w.kind==="clear"?1:.35)}
   else if(w.kind==="clear"){const s=sctx.createRadialGradient(W*.84,H*.16,0,W*.84,H*.16,70);s.addColorStop(0,"rgba(255,248,225,.95)");s.addColorStop(.25,"rgba(255,244,210,.5)");s.addColorStop(1,"rgba(255,244,210,0)");sctx.fillStyle=s;sctx.fillRect(0,0,W,H)}
+  // 背景画・パステルの日は、輪郭のはっきりした入道雲を描く
+  if((artStyle==="anime"||artStyle==="pastel")&&w.day!==false&&(w.kind==="clear"||w.kind==="cloudy")){
+    for(let i=0;i<3;i++){const bx=((groundHash(i+40)*W*1.3+t*3)%(W*1.3))-W*.15,by=H*(.52+groundHash(i+41)*.12),sz=28+groundHash(i+42)*24;
+      for(let k=0;k<9;k++){const ox=(groundHash(i*9+k)-.5)*sz*3.2,oy=-Math.abs(groundHash(i*9+k+50)-.2)*sz*2.2,r=sz*(.55+groundHash(i*9+k+90)*.6);
+        const g=sctx.createRadialGradient(bx+ox-r*.3,by+oy-r*.4,r*.1,bx+ox,by+oy,r);g.addColorStop(0,"#ffffff");g.addColorStop(.75,"#f3f6fb");g.addColorStop(1,artStyle==="pastel"?"#e9dcf3":"#cfdbe9");
+        sctx.fillStyle=g;sctx.beginPath();sctx.arc(bx+ox,by+oy,r,0,Math.PI*2);sctx.fill()}}}
   // 雲
   if(["cloudy","rain","storm","snow","fog"].includes(w.kind)){const n=w.kind==="cloudy"?5:7;for(let i=0;i<n;i++){const x=((groundHash(i+5)*W*1.4+t*(6+w.wind*2))%(W*1.4))-W*.2,y=H*(.08+groundHash(i+11)*.3),r=40+groundHash(i+3)*50;
     const c=sctx.createRadialGradient(x,y,0,x,y,r);const col=w.day?(w.kind==="cloudy"?"255,255,255":"200,206,214"):"90,96,110";c.addColorStop(0,"rgba("+col+",.55)");c.addColorStop(1,"rgba("+col+",0)");sctx.fillStyle=c;sctx.beginPath();sctx.ellipse(x,y,r*1.6,r*.7,0,0,Math.PI*2);sctx.fill()}}
@@ -325,11 +331,32 @@ void main(){
     col=mix(paper,a*1.08,cover*(.75+.25*n(q*1.3)));
     float e=edgeAt(vUv,px*1.2);col=mix(col,a*.35,smoothstep(.12,.3,e)*.8);
   }
-  else{ // 印象派の筆
+  else if(style<4.5){ // 印象派の筆
     vec3 base=strokes(q,px,9.);vec3 top=strokes(q+vec2(4.5,3.),px,6.);
     col=mix(base,top,.55);
     float L=lum(col);col=mix(vec3(L),col,1.18);
     col*=.96+.06*n(q*.6);
+  }
+  else if(style<5.5){ // 背景画：やわらかく塗りつぶした面、澄んだ色、光のにじみ
+    vec3 a=vec3(0.),bl=vec3(0.);float wsum=0.;vec3 c0=S(vUv);
+    for(int j=-2;j<=2;j++)for(int i=-2;i<=2;i++){vec3 c=S(vUv+vec2(float(i),float(j))*px*1.5);float w=exp(-dot(c-c0,c-c0)*40.);a+=c*w;wsum+=w;}
+    a/=wsum;
+    for(int j=-2;j<=2;j++)for(int i=-2;i<=2;i++){vec3 c=S(vUv+vec2(float(i),float(j))*px*6.);bl+=max(c-.8,0.);}bl/=25.;
+    float L=lum(a);col=mix(vec3(L),a,1.3)*.94;
+    vec3 shadow=vec3(.16,.26,.42),light=vec3(1.,.95,.84);
+    col=mix(col*mix(vec3(.82,.9,1.08),vec3(1.),smoothstep(.15,.6,L)),col*light,smoothstep(.55,1.,L)*.35);
+    col+=bl*vec3(1.,.92,.75)*.9;col=col/(1.+max(col-.85,0.)*1.2);
+    col*=.97+.05*n(vec2(q.x*.12,q.y*.35)+n(q/50.)*4.);
+  }
+  else{ // パステル：明るく、色とりどりに、チョークのようにやわらかく
+    vec3 a=vec3(0.);for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){a+=S(vUv+vec2(float(i),float(j))*px*2.);}a/=9.;
+    float L=lum(a);
+    float hue=fract(vUv.x*.35+vUv.y*.25+L*.3+n(q/120.)*.3);
+    vec3 rb=clamp(abs(mod(hue*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.);rb=mix(vec3(1.),rb,.7);
+    col=mix(a,a*.45+rb*.65,.42);
+    col=1.-(1.-col)*.7;
+    col=mix(vec3(lum(col)),col,1.45);
+    float chalk=n(q*.8)*.6+n(vec2(q.x*.15,q.y*.5))*.4;col*=.95+.07*chalk;
   }
   col*=dim;
   gl_FragColor=vec4(clamp(col,0.,1.),1.);
