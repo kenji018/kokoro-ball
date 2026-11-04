@@ -158,7 +158,7 @@ function realSeason(d){const m=d.getMonth()+1,day=d.getDate(),md=m*100+day;if(md
 /* ---------- 記録 ---------- */
 const KEY="life-tree-v1";
 let st=load(KEY,null);if(!st||typeof st!=="object")st={};
-st.values=st.values||[];st.records=st.records||[];st.storms=st.storms||[];st.retired=st.retired||[];
+st.values=st.values||[];st.shape=st.shape==="cedar"?"cedar":"round";st.records=st.records||[];st.storms=st.storms||[];st.retired=st.retired||[];
 const persist=()=>save(KEY,st);
 const days=()=>new Set(st.records.map(r=>r.date)).size;
 const stageIdx=()=>{let i=0;STAGES.forEach((s,k)=>{if(st.records.length>=s[0])i=k});return i};
@@ -179,7 +179,7 @@ const LEAF={spring:[[96,55,62],[84,50,58],[120,40,66]],summer:[[110,45,36],[125,
 let built=null,gust=0,wind=0;const fallers=[];
 
 // 木の形をつくる（記録が変わったときだけ）
-function build(){
+function build(){if(st.shape==="cedar")return buildCedar();
   const gy=H*.72,cxT=W/2,R=st.records,n=R.length,D=days(),si=stageIdx();
   const trunkH=40+H*.34*(1-Math.exp(-(n+2)/40))+Math.min(30,D*.6);
   const trunkW=(4+18*(1-Math.exp(-(D+1)/45)))*[1,1,1.08,1.3,1.6][si];
@@ -242,6 +242,50 @@ function build(){
     const hi=segs.filter(q=>q.depth===1).sort((a,b)=>Math.abs(b.ex-cxT)-Math.abs(a.ex-cxT))[0];if(hi)nest={x:hi.x+(hi.ex-hi.x)*.55,y:hi.y+(hi.ey-hi.y)*.55+3}}
   built={gy,cxT,trunkH,trunkW,segs,leaves,flowers,fruits,knots,roots,si,fit,blobs,canopy,swing,nest}}
 
+
+// 杉のような木：まっすぐな幹に、段になった枝葉が三角に重なる
+function buildCedar(){
+  const gy=H*.72,cxT=W/2,R=st.records,n=R.length,D=days(),si=stageIdx(),dens=1-Math.exp(-n/45);
+  const trunkH=50+H*.5*(1-Math.exp(-(n+2)/45))+Math.min(30,D*.5);
+  const trunkW=(3+12*(1-Math.exp(-(D+1)/45)))*[1,1,1.08,1.25,1.5][si];
+  const maxW=18+W*.26*(1-Math.exp(-(n+3)/40));
+  const tiers=[];const nt=3+Math.min(16,Math.floor(2+n/7));const vals=st.values.length?st.values:["top"];
+  const segs=[{x:cxT,y:gy,mx:cxT+1,my:gy-trunkH*.5,ex:cxT,ey:gy-trunkH*.9,w:trunkW,depth:-1,id:"trunk",ang:Math.PI/2,len:trunkH}];
+  const tips={},knots=[],storms=st.storms;
+  for(let i=0;i<nt;i++){const f=i/(nt-1||1);const y=gy-trunkH*(.18+.84*f);const hw=maxW*Math.pow(1-f*.92,1.05)*(.85+.3*dens);const th=(trunkH*.84/nt)*(1.9+.6*dens);
+    const v=vals[i%vals.length];const id=v==="top"?"top":"v:"+v;const side=i%2?1:-1;
+    const stm=storms.find(s2=>s2.branch===id&&s2.path==="0."+(Math.floor(i/vals.length)%3));
+    const broken=stm&&stm.prog<stm.need,mended=stm&&stm.prog>=stm.need&&Math.floor(i/vals.length)===0;
+    tiers.push({y,hw,th,id,broken:broken&&Math.floor(i/vals.length)===0,seed:i*97+3});
+    if(broken&&Math.floor(i/vals.length)===0)knots.push({x:cxT+side*hw*.5,y:y+2,broken:true,w:3});
+    if(mended)knots.push({x:cxT+side*trunkW*.4,y,broken:false,w:trunkW*.8});
+    (tips[id]=tips[id]||[]).push({x:cxT-hw*.85,y:y+th*.35,depth:1},{x:cxT+hw*.85,y:y+th*.35,depth:1},{x:cxT+(i%2?.4:-.4)*hw,y:y+th*.15,depth:1})}
+  const tst=storms.find(s2=>s2.branch==="trunk");if(tst)knots.push({x:cxT+2,y:gy-trunkH*.12,broken:tst.prog<tst.need,w:trunkW*1.1});
+  tips.top=tips.top||[{x:cxT,y:gy-trunkH,depth:1}];
+  const leaves=[],flowers=[],fruits=[],blobs=[];
+  R.forEach(r=>{const key=r.value&&st.values.includes(r.value)?"v:"+r.value:Object.keys(tips)[0];const T=tips[key]||tips.top;const rr=rng(hashStr(r.id));const tp=T[Math.floor(rr()*T.length)];
+    (r.strengths||[]).forEach(s2=>flowers.push({x:tp.x+(rr()-.5)*14,y:tp.y-rr()*8,hue:SH[s2]||340,ph:rr()*6}));
+    if(r.insight&&r.insight.trim())fruits.push({x:tp.x+(rr()-.5)*10,y:tp.y+4,r,ph:rr()*6})});
+  const roots=[];const rc=cnt(r=>r.care==="rest"||r.care==="tidy");const rl=20+H*.2*(1-Math.exp(-(rc+2)/18));const nr=3+Math.min(6,Math.floor(rc/4));
+  for(let i=0;i<nr;i++){const rr=rng(500+i);const a=Math.PI*(1.15+.7*i/(nr-1||1))+(rr()-.5)*.2;let x=cxT,y=gy+2,len=rl*(.7+rr()*.5);const pts=[[x,y]];for(let k=0;k<6;k++){const aa=a+(rr()-.5)*.5;x+=Math.cos(aa)*len/6;y-=Math.sin(aa)*len/6*.7;pts.push([x,y])}roots.push({pts,w:trunkW*.45})}
+  const topY=gy-trunkH-14;let fit=1;if(topY<78)fit=Math.min(fit,(gy-78)/(gy-topY));if(maxW+14>W/2)fit=Math.min(fit,(W/2-14)/maxW);if(n<5)fit*=.55+.09*n;
+  let swing=null,nest=null;if(si>=4){const t1=tiers[1];swing={x:cxT+t1.hw*.7,y:t1.y+t1.th*.3};const t2=tiers[Math.floor(nt*.55)];nest={x:cxT-t2.hw*.6,y:t2.y+t2.th*.3}}
+  built={gy,cxT,trunkH,trunkW,segs,leaves,flowers,fruits,knots,roots,si,fit,blobs,tiers,cedar:true,canopy:{x:cxT,y:gy-trunkH*.55,w:maxW,top:topY},swing,nest}}
+function drawCedarTiers(b,s,night){
+  const pal={spring:[[95,45,34],[78,60,52]],summer:[[130,38,24],[118,35,34]],autumn:[[110,30,26],[40,35,34]],winter:[[150,22,22],[30,30,30]]}[s];
+  const dark=night?.72:1;
+  b.tiers.slice().reverse().forEach((T,idx)=>{const r=rng(T.seed);const cx=b.cxT;
+    // 段の形（下のふちがギザギザの三角）
+    const sh=(col,dy,scale)=>{ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(cx,T.y-T.th*.55*scale+dy);const k=10;
+      for(let j=0;j<=k;j++){const u=j/k,x=cx-T.hw*scale+u*T.hw*2*scale,yy=T.y+T.th*.45*scale+dy+(j%2?-T.th*.22:0)+(r()-.5)*2;if(j===0)ctx.lineTo(x,yy-T.th*.1);else ctx.lineTo(x,yy)}ctx.closePath();ctx.fill()};
+    const c0=pal[0],c1=pal[1];
+    sh("hsl("+c0[0]+","+c0[1]+"%,"+(c0[2]*dark)+"%)",0,1);
+    sh("hsl("+c1[0]+","+c1[1]+"%,"+(c1[2]*dark)+"%)",-T.th*.12,.72);
+    // 葉先の細かな筆跡
+    ctx.strokeStyle="hsla("+c1[0]+","+c1[1]+"%,"+(c1[2]*dark+8)+"%,.55)";ctx.lineWidth=1;for(let j=0;j<Math.round(T.hw/3);j++){const x=cx+(r()-.5)*T.hw*1.7,y=T.y+(r()-.3)*T.th*.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(x<cx?-3:3),y+4);ctx.stroke()}
+    if(s==="spring"){ctx.fillStyle="rgba(190,225,110,.6)";for(let j=0;j<Math.round(T.hw/4);j++){const x=cx+(r()-.5)*T.hw*1.8,y=T.y+T.th*.3+(r()-.5)*4;ctx.beginPath();ctx.arc(x,y,1.6,0,Math.PI*2);ctx.fill()}}
+    if(s==="winter"){ctx.fillStyle="rgba(255,255,255,.9)";for(let j=0;j<Math.round(T.hw/7)+1;j++){const u=(r()-.5)*1.4,x=cx+u*T.hw,y=T.y-T.th*.3+Math.abs(u)*T.th*.55;ctx.beginPath();ctx.ellipse(x,y,3+r()*4,1.6,u*.6,0,Math.PI*2);ctx.fill()}}
+    if(T.broken){ctx.strokeStyle="#3a302a";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx+T.hw*.3,T.y);ctx.quadraticCurveTo(cx+T.hw*.8,T.y+6,cx+T.hw*.9,T.y+T.th*1.2);ctx.stroke()}})}
 function drawLayer(b,s,night){
   layer.width=Math.max(1,Math.round(W*DPR));layer.height=Math.max(1,Math.round(H*DPR));const lc=layer.getContext("2d");ctx=lc;
   ctx.setTransform(DPR,0,0,DPR,0,0);ctx.translate(b.cxT,b.gy);ctx.scale(b.fit,b.fit);ctx.translate(-b.cxT,-b.gy);ctx.lineCap="round";
@@ -265,8 +309,12 @@ function drawLayer(b,s,night){
       ctx.strokeStyle=k.scar?"rgba(30,22,16,.6)":"rgba(212,170,80,.85)";ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(k.x+ox,k.y,Math.max(1.5,k.w*.42),Math.max(1.2,k.w*.3),0,0,Math.PI*2);ctx.stroke()}});
   // 葉
   const pal=LEAF[s];const leafAlpha=s==="winter"?0:1;
-  if(s!=="winter"){b.blobs.forEach(B=>{const c=pal[B.k%pal.length];const ox=sway(B.y,3);const g2=ctx.createRadialGradient(B.x+ox,B.y,0,B.x+ox,B.y,B.r);
-      const col="hsla("+c[0]+","+c[1]+"%,"+(c[2]*(night?.7:1))+"%,";g2.addColorStop(0,col+(s==="spring"?.35:.5)+")");g2.addColorStop(1,col+"0)");ctx.fillStyle=g2;ctx.beginPath();ctx.arc(B.x+ox,B.y,B.r,0,Math.PI*2);ctx.fill()});
+  if(b.cedar){drawCedarTiers(b,s,night)}
+  else if(s!=="winter"){const dn=clamp(b.leaves.length/900,0,1);
+    // 樹冠のかたまり：育つほど、すき間なくこんもり（下は濃く、上は明るく）
+    b.blobs.forEach(B=>{const c=pal[B.k%pal.length];const rr2=B.r*(1+.5*dn);ctx.fillStyle="hsla("+c[0]+","+c[1]+"%,"+(c[2]*.72*(night?.7:1))+"%,"+(.25+.65*dn)+")";ctx.beginPath();ctx.arc(B.x,B.y+2,rr2,0,Math.PI*2);ctx.fill()});
+    b.blobs.forEach(B=>{const c=pal[B.k%pal.length];const rr2=B.r*(1+.5*dn);const g2=ctx.createRadialGradient(B.x-rr2*.3,B.y-rr2*.35,0,B.x,B.y,rr2);
+      const col="hsla("+c[0]+","+c[1]+"%,"+(c[2]*1.08*(night?.7:1))+"%,";g2.addColorStop(0,col+(.35+.45*dn)+")");g2.addColorStop(1,col+"0)");ctx.fillStyle=g2;ctx.beginPath();ctx.arc(B.x,B.y,rr2,0,Math.PI*2);ctx.fill()});
     b.leaves.forEach((L,i)=>{const c=pal[L.k%pal.length];const ox=sway(L.y,3);
     const lit=night?.78:1;drawLeaf(L.x+ox,L.y,L.rot,L.sz*(s==="spring"?.82:1),"hsl("+c[0]+","+c[1]+"%,"+(c[2]*lit)+"%)",.92)})}
   else{ // 冬：枝先にわずかな枯れ葉と雪
@@ -384,6 +432,7 @@ function renderSet(){
     '<div class="btnrow"><input type="text" id="valAdd" placeholder="ほかのことを書く" maxlength="12" style="flex:1;min-width:0" value="'+esc(valAdd)+'"><button class="ghost" id="valAddBtn">追加</button></div>'+
     '<div class="btnrow"><button class="primary" id="valSave" '+(valDraft.length>=1&&valDraft.length<=5?"":"disabled")+'>この枝にする（'+valDraft.length+'/5）</button></div><div class="toast" id="valToast"></div>'+
     '<p class="note">外した枝の葉は、てっぺんの小枝に移ります（記録は消えません）。</p></div>';
+  h+='<div class="section"><h2>木の形</h2><div class="seg2" role="group" aria-label="木の形"><button data-shape="round" aria-pressed="'+(st.shape==="round")+'">こんもりした広葉樹</button><button data-shape="cedar" aria-pressed="'+(st.shape==="cedar")+'">杉のような針葉樹</button></div><p class="note">杉のような針葉樹は一年中緑で、紅葉や落葉のかわりに、春の新芽や冬の雪で季節を表します。</p></div>';
   h+='<div class="section"><h2>このアプリについて</h2><p class="note">人生の木は、心のためにした行動を葉として重ね、人生の木を育てるアプリです。根は土台、幹は続けてきた日々、枝は大切にしたいこと、葉は行動、花は強み、実は気づき。嵐で折れた枝も、お世話を重ねると「こぶ」になって、前より太くなります。</p></div>';
   v.innerHTML=h}
 function show(n){current=n;document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===n));["grow","look","log","set"].forEach(k=>$("v-"+k).hidden=k!==n);
@@ -419,6 +468,7 @@ $("v-log").addEventListener("click",async e=>{const b=e.target.closest("button")
     (d.storms||[]).forEach(s=>{if(!st.storms.some(x=>x.id===s.id))st.storms.push(s)});if(!st.values.length&&d.values)st.values=d.values;st.records.sort((a,b)=>(a.at||0)-(b.at||0));persist();rebuild();renderLog();$("bkToast").textContent=n+"件を戻しました。"}catch(_){$("bkToast").textContent="読み込めませんでした。"}return}});
 $("v-set").addEventListener("input",e=>{if(e.target.id==="valAdd")valAdd=e.target.value});
 $("v-set").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.shape){st.shape=b.dataset.shape;persist();rebuild();renderSet();return}
   if(b.dataset.pick){const x=b.dataset.pick,i=valDraft.indexOf(x);if(i>=0)valDraft.splice(i,1);else if(valDraft.length<5)valDraft.push(x);renderSet();return}
   if(b.id==="valAddBtn"){const x=valAdd.trim();if(x&&!valDraft.includes(x)&&valDraft.length<5)valDraft.push(x);valAdd="";renderSet();return}
   if(b.id==="valSave"){st.values=valDraft.slice();persist();rebuild();renderSet();$("valToast").textContent="枝を決めました。";return}});
