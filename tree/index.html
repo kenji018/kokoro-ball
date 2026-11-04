@@ -158,7 +158,7 @@ function realSeason(d){const m=d.getMonth()+1,day=d.getDate(),md=m*100+day;if(md
 /* ---------- 記録 ---------- */
 const KEY="life-tree-v1";
 let st=load(KEY,null);if(!st||typeof st!=="object")st={};
-st.values=st.values||[];st.shape=st.shape==="cedar"?"cedar":"round";st.records=st.records||[];st.storms=st.storms||[];st.retired=st.retired||[];
+st.values=st.values||[];st.shape=["cedar","round","umbrella"].includes(st.shape)?st.shape:"umbrella";st.records=st.records||[];st.storms=st.storms||[];st.retired=st.retired||[];
 const persist=()=>save(KEY,st);
 const days=()=>new Set(st.records.map(r=>r.date)).size;
 const stageIdx=()=>{let i=0;STAGES.forEach((s,k)=>{if(st.records.length>=s[0])i=k});return i};
@@ -181,8 +181,9 @@ let built=null,gust=0,wind=0;const fallers=[];
 // 木の形をつくる（記録が変わったときだけ）
 function build(){if(st.shape==="cedar")return buildCedar();
   const gy=H*.72,cxT=W/2,R=st.records,n=R.length,D=days(),si=stageIdx();
-  const trunkH=40+H*.34*(1-Math.exp(-(n+2)/40))+Math.min(30,D*.6);
-  const trunkW=(4+18*(1-Math.exp(-(D+1)/45)))*[1,1,1.08,1.3,1.6][si];
+  const um=st.shape==="umbrella";
+  const trunkH=(40+H*.34*(1-Math.exp(-(n+2)/40))+Math.min(30,D*.6))*(um?.52:1);
+  const trunkW=(4+18*(1-Math.exp(-(D+1)/45)))*[1,1,1.08,1.3,1.6][si]*(um?1.3:1);
   const segs=[],tips={},knots=[];
   const storms=st.storms;
   // 枝を描く（再帰）
@@ -199,18 +200,21 @@ function build(){if(st.shape==="cedar")return buildCedar();
     if(depth>=maxD)return;
     const k=depth===0?3:2;
     for(let i=0;i<k;i++){const t=depth===0?.45+i*.22:.65+i*.25;const bx=x+(ex-x)*t,by=y+(ey-y)*t;const sgn=i%2?1:-1;
-      branch(id,bx,by,ang+sgn*(.38+rnd()*.35),len*(.62+rnd()*.12),Math.max(.8,w*.62),depth+1,maxD,seed*31+i*7+depth,path+"."+i)}
+      let na=ang+sgn*(.38+rnd()*.35);if(um){na=ang+sgn*(.25+rnd()*.25);na+=(Math.PI/2-na)*.12}
+      branch(id,bx,by,na,len*(um?.7+rnd()*.12:.62+rnd()*.12),Math.max(.8,w*(um?.66:.62)),depth+1,maxD,seed*31+i*7+depth,path+"."+i)}
   }
   // 幹
   const vals=st.values.slice(),nv=Math.max(1,vals.length);
   segs.push({x:cxT,y:gy,mx:cxT+4,my:gy-trunkH*.5,ex:cxT-2,ey:gy-trunkH,w:trunkW,depth:-1,id:"trunk",ang:Math.PI/2,len:trunkH});
   const tst=storms.find(s=>s.branch==="trunk");if(tst)knots.push({x:cxT+3,y:gy-trunkH*.45,broken:tst.prog<tst.need,w:trunkW*1.1});
   // 価値ごとの大枝
-  vals.forEach((v,i)=>{const c=cnt(r=>r.value===v);const h=gy-trunkH*(.42+.5*(nv===1?.5:i/(nv-1)));const side=i%2?1:-1;
-    const ang=Math.PI/2+side*(.62+.22*((i*37)%10)/10);const len=18+Math.min(W*.33,(W*.1+W*.25*(1-Math.exp(-c/14))))*(.55+.45*(1-Math.exp(-n/30)));
+  vals.forEach((v,i)=>{const c=cnt(r=>r.value===v);const h=um?gy-trunkH*(.82+.18*((i*53)%10)/10):gy-trunkH*(.42+.5*(nv===1?.5:i/(nv-1)));const side=i%2?1:-1;
+    const ang=um?Math.PI/2+side*(.95+.42*(Math.floor(i/2)+.5)/Math.ceil(nv/2)):Math.PI/2+side*(.62+.22*((i*37)%10)/10);let len=18+Math.min(W*.33,(W*.1+W*.25*(1-Math.exp(-c/14))))*(.55+.45*(1-Math.exp(-n/30)));if(um)len*=1.45;
     const maxD=c<2?1:c<6?2:c<16?3:4;branch("v:"+v,cxT+side*trunkW*.3,h,ang,len,trunkW*.55,0,maxD,hashStr(v)+11,"0")});
   // てっぺん（どの枝でもない記録）
-  {const c=cnt(r=>!r.value||!vals.includes(r.value));const maxD=c<3?1:c<10?2:3;branch("top",cxT-2,gy-trunkH,Math.PI/2+.05,24+trunkH*.28,trunkW*.5,0,si<1?0:maxD,977,"0")}
+  {const c=cnt(r=>!r.value||!vals.includes(r.value));const maxD=c<3?1:c<10?2:3;
+    if(um){const L=(30+W*.2*(1-Math.exp(-n/30)));branch("top",cxT,gy-trunkH,Math.PI/2+.6,L,trunkW*.5,0,si<1?0:Math.max(2,maxD),977,"0");branch("top",cxT,gy-trunkH,Math.PI/2-.6,L,trunkW*.5,0,si<1?0:Math.max(2,maxD),1977,"1")}
+    else branch("top",cxT-2,gy-trunkH,Math.PI/2+.05,24+trunkH*.28,trunkW*.5,0,si<1?0:maxD,977,"0")}
   // 手放した枝（節だけ残る）
   st.retired.forEach((v,i)=>{const h=gy-trunkH*(.25+.12*(i%4));knots.push({x:cxT+(i%2?1:-1)*trunkW*.48,y:h,broken:false,w:trunkW*.35,scar:true})});
   // 葉・花・実の場所
@@ -226,7 +230,15 @@ function build(){if(st.shape==="cedar")return buildCedar();
   {const all=[];Object.values(tips).forEach(T=>T.forEach(tp=>{if(tp.depth>=1)all.push(tp)}));const rr=rng(9001);
     if(all.length&&n>=5){all.forEach(tp=>{if(rr()<.25+.75*dens)blobs.push({x:tp.x+(rr()-.5)*8,y:tp.y+(rr()-.5)*6,r:(10+16*dens)*(.8+rr()*.4),k:Math.floor(rr()*3)})});
       const fill=Math.min(1800,Math.round(n*3.2*dens));for(let i=0;i<fill;i++){const tp=all[Math.floor(rr()*all.length)];const a=rr()*Math.PI*2,d=rr()*(10+14*dens);
-        leaves.push({x:tp.x+Math.cos(a)*d,y:tp.y+Math.sin(a)*d*.75,rot:rr()*Math.PI,sz:3.4+rr()*2.4,k:Math.floor(rr()*4),ph:rr()*6})}}}
+        leaves.push({x:tp.x+Math.cos(a)*d,y:tp.y+Math.sin(a)*d*(um?.45:.75),rot:rr()*Math.PI,sz:3.4+rr()*2.4,k:Math.floor(rr()*4),ph:rr()*6})}}}
+  // 枝を広げる木：枝先をつなぐように、平たい傘の形に茂らせる
+  if(um&&n>=3){const all=Object.values(tips).flat();if(all.length){let x0=1e9,x1=-1e9,yt=1e9;all.forEach(q=>{x0=Math.min(x0,q.x);x1=Math.max(x1,q.x);yt=Math.min(yt,q.y)});
+    const span=(x1-x0)/2,cxm=(x0+x1)/2,k=Math.round(10+14*dens),rr=rng(4242);
+    // 傘の中身：平たい楕円の中を、すき間なく埋める
+    if(n>=8){const ey=yt+14+span*.18,ry=span*.26,step=14+8*(1-dens);for(let yy=ey-ry;yy<=ey+ry;yy+=step){const w2=span*Math.sqrt(Math.max(0,1-((yy-ey)/ry)**2));for(let xx=cxm-w2;xx<=cxm+w2;xx+=step*1.2){blobs.push({x:xx+(rr()-.5)*6,y:yy+(rr()-.5)*5,r:(11+12*dens)*(.9+rr()*.3),k:Math.floor(rr()*3)})}}}
+    for(let i=0;i<k;i++){const u=i/(k-1)*2-1,x=cxm+u*span*.98,y=yt+12+u*u*span*.22+(rr()-.5)*6;blobs.push({x,y,r:(14+20*dens)*(.85+rr()*.3),k:Math.floor(rr()*3)});
+      blobs.push({x:x+(rr()-.5)*10,y:y+16+rr()*8,r:(12+18*dens),k:Math.floor(rr()*3)});if(Math.abs(u)<.75&&n>=10)blobs.push({x:x+(rr()-.5)*12,y:y+32+rr()*8,r:(11+16*dens),k:Math.floor(rr()*3)});
+      if(dens>.3){const fill=Math.round(6+20*dens);for(let q=0;q<fill;q++){const a=rr()*Math.PI*2,d=rr()*(16+18*dens);leaves.push({x:x+Math.cos(a)*d,y:y+6+Math.sin(a)*d*.45,rot:rr()*Math.PI,sz:3.4+rr()*2.4,k:Math.floor(rr()*4),ph:rr()*6})}}}}}
   // 根
   const roots=[];const rc=cnt(r=>r.care==="rest"||r.care==="tidy");const rl=20+H*.2*(1-Math.exp(-(rc+2)/18));
   const nr=3+Math.min(6,Math.floor(rc/4));
@@ -240,7 +252,7 @@ function build(){if(st.shape==="cedar")return buildCedar();
   // 大樹：低い枝にブランコ、枝先に鳥の巣
   let swing=null,nest=null;if(si>=4){const low=segs.filter(q=>q.depth===0&&q.id.startsWith("v:")).sort((a,b)=>b.y-a.y)[0];if(low)swing={x:low.x+(low.ex-low.x)*.62,y:low.y+(low.ey-low.y)*.62};
     const hi=segs.filter(q=>q.depth===1).sort((a,b)=>Math.abs(b.ex-cxT)-Math.abs(a.ex-cxT))[0];if(hi)nest={x:hi.x+(hi.ex-hi.x)*.55,y:hi.y+(hi.ey-hi.y)*.55+3}}
-  built={gy,cxT,trunkH,trunkW,segs,leaves,flowers,fruits,knots,roots,si,fit,blobs,canopy,swing,nest}}
+  built={gy,cxT,trunkH,trunkW,segs,leaves,flowers,fruits,knots,roots,si,fit,blobs,canopy,swing,nest,flat:um?.58:1}}
 
 
 // 杉のような木：まっすぐな幹に、段になった枝葉が三角に重なる
@@ -312,9 +324,9 @@ function drawLayer(b,s,night){
   if(b.cedar){drawCedarTiers(b,s,night)}
   else if(s!=="winter"){const dn=clamp(b.leaves.length/900,0,1);
     // 樹冠のかたまり：育つほど、すき間なくこんもり（下は濃く、上は明るく）
-    b.blobs.forEach(B=>{const c=pal[B.k%pal.length];const rr2=B.r*(1+.5*dn);ctx.fillStyle="hsla("+c[0]+","+c[1]+"%,"+(c[2]*.72*(night?.7:1))+"%,"+(.25+.65*dn)+")";ctx.beginPath();ctx.arc(B.x,B.y+2,rr2,0,Math.PI*2);ctx.fill()});
+    b.blobs.forEach(B=>{const c=pal[B.k%pal.length];const rr2=B.r*(1+.5*dn);ctx.fillStyle="hsla("+c[0]+","+c[1]+"%,"+(c[2]*.72*(night?.7:1))+"%,"+(.25+.65*dn)+")";ctx.beginPath();ctx.ellipse(B.x,B.y+2,rr2*(b.flat<1?1.25:1),rr2*b.flat,0,0,Math.PI*2);ctx.fill()});
     b.blobs.forEach(B=>{const c=pal[B.k%pal.length];const rr2=B.r*(1+.5*dn);const g2=ctx.createRadialGradient(B.x-rr2*.3,B.y-rr2*.35,0,B.x,B.y,rr2);
-      const col="hsla("+c[0]+","+c[1]+"%,"+(c[2]*1.08*(night?.7:1))+"%,";g2.addColorStop(0,col+(.35+.45*dn)+")");g2.addColorStop(1,col+"0)");ctx.fillStyle=g2;ctx.beginPath();ctx.arc(B.x,B.y,rr2,0,Math.PI*2);ctx.fill()});
+      const col="hsla("+c[0]+","+c[1]+"%,"+(c[2]*1.08*(night?.7:1))+"%,";g2.addColorStop(0,col+(.35+.45*dn)+")");g2.addColorStop(1,col+"0)");ctx.fillStyle=g2;ctx.beginPath();ctx.ellipse(B.x,B.y,rr2*(b.flat<1?1.25:1),rr2*b.flat,0,0,Math.PI*2);ctx.fill()});
     b.leaves.forEach((L,i)=>{const c=pal[L.k%pal.length];const ox=sway(L.y,3);
     const lit=night?.78:1;drawLeaf(L.x+ox,L.y,L.rot,L.sz*(s==="spring"?.82:1),"hsl("+c[0]+","+c[1]+"%,"+(c[2]*lit)+"%)",.92)})}
   else{ // 冬：枝先にわずかな枯れ葉と雪
@@ -432,7 +444,7 @@ function renderSet(){
     '<div class="btnrow"><input type="text" id="valAdd" placeholder="ほかのことを書く" maxlength="12" style="flex:1;min-width:0" value="'+esc(valAdd)+'"><button class="ghost" id="valAddBtn">追加</button></div>'+
     '<div class="btnrow"><button class="primary" id="valSave" '+(valDraft.length>=1&&valDraft.length<=5?"":"disabled")+'>この枝にする（'+valDraft.length+'/5）</button></div><div class="toast" id="valToast"></div>'+
     '<p class="note">外した枝の葉は、てっぺんの小枝に移ります（記録は消えません）。</p></div>';
-  h+='<div class="section"><h2>木の形</h2><div class="seg2" role="group" aria-label="木の形"><button data-shape="round" aria-pressed="'+(st.shape==="round")+'">こんもりした広葉樹</button><button data-shape="cedar" aria-pressed="'+(st.shape==="cedar")+'">杉のような針葉樹</button></div><p class="note">杉のような針葉樹は一年中緑で、紅葉や落葉のかわりに、春の新芽や冬の雪で季節を表します。</p></div>';
+  h+='<div class="section"><h2>木の形</h2><div class="seg2" role="group" aria-label="木の形"><button data-shape="umbrella" aria-pressed="'+(st.shape==="umbrella")+'">枝を広げる大きな木</button><button data-shape="round" aria-pressed="'+(st.shape==="round")+'">こんもりした木</button><button data-shape="cedar" aria-pressed="'+(st.shape==="cedar")+'">杉のような木</button></div><p class="note">杉のような針葉樹は一年中緑で、紅葉や落葉のかわりに、春の新芽や冬の雪で季節を表します。</p></div>';
   h+='<div class="section"><h2>このアプリについて</h2><p class="note">人生の木は、心のためにした行動を葉として重ね、人生の木を育てるアプリです。根は土台、幹は続けてきた日々、枝は大切にしたいこと、葉は行動、花は強み、実は気づき。嵐で折れた枝も、お世話を重ねると「こぶ」になって、前より太くなります。</p></div>';
   v.innerHTML=h}
 function show(n){current=n;document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===n));["grow","look","log","set"].forEach(k=>$("v-"+k).hidden=k!==n);
