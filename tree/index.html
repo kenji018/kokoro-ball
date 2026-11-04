@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>人生の木</title>
+<meta name="description" content="心のためにした行動で育つ人生の木">
+<meta name="theme-color" content="#EDEEEB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131315" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="人生の木">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+/* Layout: the tree's small world on top (sky, the tree, a cut of soil with roots), what you did today below, the tree's ledger in tabs. Sister to こころのたま. */
+:root{
+  --bg:#EDEEEB; --surface:#F7F7F5; --ink:#23262A; --muted:#6C7076; --line:#D3D5D1;
+  --accent:#4B4358; --accent-ink:#F7F7F5; --soft:#E4E2E8; --good:#5B7360; --warn:#8A5858;
+  --f-display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --r:3px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131315; --surface:#1B1B1E; --ink:#E7E5E9; --muted:#9A979F; --line:#2E2D32;
+  --accent:#BDB0CC; --accent-ink:#17161A; --soft:#26232B; --good:#9DB7A2; --warn:#D49C9C; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131315; --surface:#1B1B1E; --ink:#E7E5E9; --muted:#9A979F; --line:#2E2D32;
+  --accent:#BDB0CC; --accent-ink:#17161A; --soft:#26232B; --good:#9DB7A2; --warn:#D49C9C; color-scheme:dark}
+[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:14.5px;line-height:1.8;letter-spacing:.02em;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 56px}
+.app{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h1{font-family:var(--f-display);font-weight:500;font-size:1.45rem;margin:0;letter-spacing:.18em}
+h2{font-family:var(--f-display);font-weight:500;font-size:1.02rem;letter-spacing:.16em;margin:0}
+p{margin:0}
+.date{color:var(--muted);font-size:.78rem;letter-spacing:.14em;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}.small{font-size:.8rem}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:1px solid var(--accent);outline-offset:3px}
+.world{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#tree{display:block;width:100%;height:440px;cursor:pointer;touch-action:manipulation}
+.wtop{position:absolute;left:14px;right:14px;top:12px;display:flex;justify-content:space-between;gap:10px;pointer-events:none;color:#2b2f2a;text-shadow:0 1px 4px rgba(255,255,255,.6)}
+.wtop.night{color:#f2f0ea;text-shadow:0 1px 5px rgba(0,0,0,.5)}
+.wtop b{display:block;font-family:var(--f-display);font-weight:500;font-size:1.1rem;letter-spacing:.12em}
+.wtop span{font-size:.72rem;letter-spacing:.08em}
+.wtop .r{text-align:right}
+.card{position:absolute;left:50%;bottom:70px;transform:translateX(-50%);width:min(86%,360px);background:rgba(250,248,242,.96);color:#2b2a26;border-radius:6px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.18);font-size:.88rem;line-height:1.7;z-index:3}
+.card small{display:block;color:#77736a;font-size:.72rem;letter-spacing:.08em}
+.card button{position:absolute;right:6px;top:4px;border:0;background:transparent;font-size:1rem;color:#77736a;cursor:pointer}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;border:0;border-bottom:1px solid transparent;margin-bottom:-1px;background:transparent;color:var(--muted);font-family:var(--f-display);font-size:.95rem;letter-spacing:.14em;padding:10px 4px;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.view{display:flex;flex-direction:column}
+.section{display:flex;flex-direction:column;gap:12px;padding:16px 0;border-bottom:1px solid var(--line)}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>.lbl{font-size:.86rem}
+.hint{font-size:.76rem;color:var(--muted)}
+.note{font-size:.76rem;color:var(--muted);line-height:1.7}
+textarea,input[type=text]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;width:100%;box-sizing:border-box}
+textarea{min-height:64px;resize:vertical;line-height:1.7}
+.grid5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.grid5 button{border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;padding:8px 2px;border-radius:var(--r);cursor:pointer;display:flex;flex-direction:column;align-items:center}
+.grid5 button b{font-family:var(--f-display);font-weight:500;font-size:.9rem}
+.grid5 button span{font-size:.6rem;color:var(--muted);line-height:1.3;text-align:center}
+.grid5 button[aria-pressed="true"]{border-color:var(--accent);background:var(--soft)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.8rem;padding:3px 11px;border-radius:var(--r);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.seg2{display:flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.seg2 button{flex:1;border:0;border-right:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.82rem;padding:7px 4px;cursor:pointer}
+.seg2 button:last-child{border-right:0}
+.seg2 button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.primary{border:0;background:var(--ink);color:var(--surface);font-family:var(--f-display);font-size:.95rem;letter-spacing:.2em;padding:12px 18px;border-radius:var(--r);cursor:pointer}
+.primary:disabled,.ghost:disabled{opacity:.4;cursor:default}
+.ghost{border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.84rem;padding:8px 14px;border-radius:var(--r);cursor:pointer}
+.link{border:0;background:transparent;color:var(--accent);font:inherit;font-size:.84rem;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toast{font-size:.84rem;color:var(--good);min-height:1.3em}
+.banner{border-left:2px solid var(--accent);background:var(--soft);padding:10px 14px;font-size:.86rem}
+.parts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.part{border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.part b{font-family:var(--f-display);font-weight:500;font-size:1.5rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.part span{font-size:.74rem;color:var(--muted);line-height:1.5}
+.part em{font-style:normal;font-family:var(--f-display);font-size:.9rem}
+.rec{border-bottom:1px solid var(--line);padding:8px 0;display:grid;grid-template-columns:4.2em minmax(0,1fr) auto;gap:10px;align-items:start;font-size:.86rem}
+.rec .d{color:var(--muted);font-size:.78rem;font-variant-numeric:tabular-nums}
+.rec .t{overflow-wrap:anywhere}.rec .t small{display:block;color:var(--muted);font-size:.74rem}
+details.box summary{cursor:pointer;list-style:none}
+details.box summary::-webkit-details-marker{display:none}
+details.box summary h2::after{content:"　＋";color:var(--muted);font-family:var(--f-body)}
+details.box[open] summary h2::after{content:"　－"}
+@media (max-width:420px){.grid5{grid-template-columns:repeat(3,minmax(0,1fr))}.parts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header><h1>人生の木</h1><div class="date" id="today"></div></header>
+  <section class="world" aria-label="人生の木">
+    <canvas id="tree" aria-label="人生の木。タップすると枝が揺れ、実をタップすると気づきが読めます"></canvas>
+    <div class="wtop" id="wtop"><div><b id="ttl">芽生え</b><span id="age"></span></div><div class="r"><b id="season"></b><span id="sekki"></span></div></div>
+    <div class="card" id="card" hidden><button id="cardX" aria-label="閉じる">×</button><small id="cardH"></small><div id="cardB"></div></div>
+  </section>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-v="grow" aria-selected="true">育てる</button>
+    <button role="tab" data-v="look" aria-selected="false">木のようす</button>
+    <button role="tab" data-v="log" aria-selected="false">記録</button>
+    <button role="tab" data-v="set" aria-selected="false">枝と設定</button>
+  </nav>
+  <section class="view" id="v-grow"></section>
+  <section class="view" id="v-look" hidden></section>
+  <section class="view" id="v-log" hidden></section>
+  <section class="view" id="v-set" hidden></section>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const pad=n=>String(n).padStart(2,"0");
+const dkey=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const TODAY=dkey(new Date());
+const wd=["日","月","火","水","木","金","土"];
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+function load(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb}catch(e){return fb}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+{const d=new Date();$("today").textContent=(d.getMonth()+1)+"月"+d.getDate()+"日（"+wd[d.getDay()]+"）"}
+// 決まった並びの乱数（同じ記録はいつも同じ場所に描く）
+function rng(seed){let s=(seed>>>0)||1;return()=>{s^=s<<13;s^=s>>>17;s^=s<<5;return((s>>>0)%100000)/100000}}
+const hashStr=str=>{let h=2166136261;for(const c of String(str)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0};
+
+/* ---------- 決まりごと ---------- */
+const CARE=[["rest","休む","眠る・休息","根"],["move","動く","散歩・運動","幹"],["connect","つながる","話す・会う","葉"],["challenge","挑戦する","初めて・苦手","花"],["tidy","ととのえる","片づけ・振り返り","根"]];
+const CARE_MAP=Object.fromEntries(CARE.map(c=>[c[0],c]));
+const STRENGTHS=[["好奇心",48],["向学心",34],["創造性",292],["勇気",8],["粘り強さ",22],["誠実さ",200],["思いやり",340],["感謝",58],["ユーモア",80],["チームワーク",160],["公平さ",232],["自分をととのえる力",272]];
+const SH=Object.fromEntries(STRENGTHS);
+const VALUE_IDEAS=["家族","パートナー","友人","仕事","学び・成長","健康","誠実さ","やさしさ","挑戦","遊び・楽しさ","人の役に立つ","自然","創ること","落ち着き","自立","感謝"];
+const STAGES=[[0,"芽生え"],[5,"若木"],[20,"育つ木"],[50,"大きな木"],[120,"人生の大樹"]];
+const SIZES=[["小",2],["中",3],["大",4]];
+const SEASONS={spring:"春",summer:"夏",autumn:"秋",winter:"冬"};
+const SEKKI=[[1,6,"小寒"],[1,20,"大寒"],[2,4,"立春"],[2,19,"雨水"],[3,5,"啓蟄"],[3,20,"春分"],[4,4,"清明"],[4,20,"穀雨"],[5,5,"立夏"],[5,21,"小満"],[6,5,"芒種"],[6,21,"夏至"],[7,7,"小暑"],[7,23,"大暑"],[8,7,"立秋"],[8,23,"処暑"],[9,7,"白露"],[9,23,"秋分"],[10,8,"寒露"],[10,23,"霜降"],[11,7,"立冬"],[11,22,"小雪"],[12,7,"大雪"],[12,21,"冬至"]];
+function sekki(d){let cur=SEKKI[SEKKI.length-1][2];for(const s of SEKKI){if(d.getMonth()+1>s[0]||(d.getMonth()+1===s[0]&&d.getDate()>=s[1]))cur=s[2]}return cur}
+// 季節は暦の上の区切り（立春・立夏・立秋・立冬）で決める
+function realSeason(d){const m=d.getMonth()+1,day=d.getDate(),md=m*100+day;if(md>=204&&md<505)return"spring";if(md>=505&&md<807)return"summer";if(md>=807&&md<1107)return"autumn";return"winter"}
+
+/* ---------- 記録 ---------- */
+const KEY="life-tree-v1";
+let st=load(KEY,null);if(!st||typeof st!=="object")st={};
+st.values=st.values||[];st.records=st.records||[];st.storms=st.storms||[];st.retired=st.retired||[];
+const persist=()=>save(KEY,st);
+const days=()=>new Set(st.records.map(r=>r.date)).size;
+const stageIdx=()=>{let i=0;STAGES.forEach((s,k)=>{if(st.records.length>=s[0])i=k});return i};
+const cnt=f=>st.records.filter(f).length;
+const openStorm=()=>st.storms.find(s=>s.prog<s.need);
+// 落ち葉：前の季節までに出た葉は、冬を越すたびに土に還る
+function fallenLeaves(){const s=realSeason(new Date());const y=new Date().getFullYear();
+  const cutoff=s==="winter"||s==="spring"?null:null;let n=0;st.records.forEach(r=>{const d=new Date(r.at||Date.parse(r.date));if(Date.now()-d.getTime()>200*864e5)n++});return n}
+
+/* ---------- 描画 ---------- */
+const cv=$("tree"),ctx=cv.getContext("2d");let W=0,H=0,DPR=1;
+function resize(){DPR=Math.min(2,devicePixelRatio||1);const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);built=null}
+addEventListener("resize",resize);
+let preview=null;const season=()=>preview||realSeason(new Date());
+const SKY={spring:["#cfe3ef","#f4ecef"],summer:["#8ec5e8","#e5f2f2"],autumn:["#e8cfa8","#f3e7d6"],winter:["#c6d1db","#eef1f4"]};
+const NIGHT={spring:["#1d2440","#3a3f5e"],summer:["#142038","#2c3f5a"],autumn:["#241f33","#4a3a44"],winter:["#151b2b","#333c50"]};
+const LEAF={spring:[[96,55,62],[84,50,58],[120,40,66]],summer:[[110,45,36],[125,40,30],[100,42,42]],autumn:[[18,75,52],[32,82,55],[45,80,55],[8,62,45]],winter:[[30,25,48]]};
+let built=null,gust=0,wind=0;const fallers=[];
+
+// 木の形をつくる（記録が変わったときだけ）
+function build(){
+  const gy=H*.72,cxT=W/2,R=st.records,n=R.length,D=days(),si=stageIdx();
+  const trunkH=40+H*.34*(1-Math.exp(-(n+2)/40))+Math.min(30,D*.6);
+  const trunkW=4+18*(1-Math.exp(-(D+1)/45));
+  const segs=[],tips={},knots=[];
+  const storms=st.storms;
+  // 枝を描く（再帰）
+  function branch(id,x,y,ang,len,w,depth,maxD,seed,path){
+    const rnd=rng(seed);const bend=(rnd()-.5)*.35;
+    const st2=storms.find(s=>s.branch===id&&s.path===path);
+    let broken=st2&&st2.prog<st2.need,mended=st2&&st2.prog>=st2.need;
+    const ex=x+Math.cos(ang)*len,ey=y-Math.sin(ang)*len;
+    const mx=x+Math.cos(ang+bend)*len*.5,my=y-Math.sin(ang+bend)*len*.5;
+    segs.push({x,y,mx,my,ex,ey,w:w*(mended?1.18:1),depth,broken,id,ang,len});
+    if(broken){knots.push({x:mx,y:my,broken:true,w});return}
+    if(mended)knots.push({x:mx,y:my,broken:false,w:w*1.18});
+    (tips[id]=tips[id]||[]).push({x:ex,y:ey,depth});
+    if(depth>=maxD)return;
+    const k=depth===0?3:2;
+    for(let i=0;i<k;i++){const t=depth===0?.45+i*.22:.65+i*.25;const bx=x+(ex-x)*t,by=y+(ey-y)*t;const sgn=i%2?1:-1;
+      branch(id,bx,by,ang+sgn*(.38+rnd()*.35),len*(.62+rnd()*.12),Math.max(.8,w*.62),depth+1,maxD,seed*31+i*7+depth,path+"."+i)}
+  }
+  // 幹
+  const vals=st.values.slice(),nv=Math.max(1,vals.length);
+  segs.push({x:cxT,y:gy,mx:cxT+4,my:gy-trunkH*.5,ex:cxT-2,ey:gy-trunkH,w:trunkW,depth:-1,id:"trunk",ang:Math.PI/2,len:trunkH});
+  const tst=storms.find(s=>s.branch==="trunk");if(tst)knots.push({x:cxT+3,y:gy-trunkH*.45,broken:tst.prog<tst.need,w:trunkW*1.1});
+  // 価値ごとの大枝
+  vals.forEach((v,i)=>{const c=cnt(r=>r.value===v);const h=gy-trunkH*(.42+.5*(nv===1?.5:i/(nv-1)));const side=i%2?1:-1;
+    const ang=Math.PI/2+side*(.62+.22*((i*37)%10)/10);const len=18+Math.min(W*.33,(W*.1+W*.25*(1-Math.exp(-c/14))))*(.55+.45*(1-Math.exp(-n/30)));
+    const maxD=c<2?1:c<6?2:c<16?3:4;branch("v:"+v,cxT+side*trunkW*.3,h,ang,len,trunkW*.55,0,maxD,hashStr(v)+11,"0")});
+  // てっぺん（どの枝でもない記録）
+  {const c=cnt(r=>!r.value||!vals.includes(r.value));const maxD=c<3?1:c<10?2:3;branch("top",cxT-2,gy-trunkH,Math.PI/2+.05,24+trunkH*.28,trunkW*.5,0,si<1?0:maxD,977,"0")}
+  // 手放した枝（節だけ残る）
+  st.retired.forEach((v,i)=>{const h=gy-trunkH*(.25+.12*(i%4));knots.push({x:cxT+(i%2?1:-1)*trunkW*.48,y:h,broken:false,w:trunkW*.35,scar:true})});
+  // 葉・花・実の場所
+  const leaves=[],flowers=[],fruits=[],blobs=[];
+  R.forEach((r,idx)=>{const key=r.value&&vals.includes(r.value)?"v:"+r.value:"top";let T=tips[key];if(!T||!T.length)T=tips.top||[{x:cxT,y:gy-trunkH}];
+    const rr=rng(hashStr(r.id));const tp=T[Math.floor(rr()*T.length)];const a=rr()*Math.PI*2,d=4+rr()*14;
+    const lx=tp.x+Math.cos(a)*d,ly=tp.y+Math.sin(a)*d*.8;blobs.push({x:lx,y:ly,r:13+rr()*7,k:Math.floor(rr()*3)});
+    for(let q=0;q<9;q++){const a4=rr()*Math.PI*2,d4=rr()*9;leaves.push({x:lx+Math.cos(a4)*d4,y:ly+Math.sin(a4)*d4*.8,rot:rr()*Math.PI,sz:3.6+rr()*2.4,k:Math.floor(rr()*4),ph:rr()*6,r,main:q===0})}
+    (r.strengths||[]).forEach((s,j)=>{const a2=rr()*Math.PI*2;flowers.push({x:tp.x+Math.cos(a2)*(6+rr()*10),y:tp.y+Math.sin(a2)*(6+rr()*8),hue:SH[s]||340,ph:rr()*6})});
+    if(r.insight&&r.insight.trim()){const a3=rr()*Math.PI;fruits.push({x:tp.x+Math.cos(a3)*8,y:tp.y+8+rr()*6,r,ph:rr()*6})}});
+  // 根
+  const roots=[];const rc=cnt(r=>r.care==="rest"||r.care==="tidy");const rl=20+H*.2*(1-Math.exp(-(rc+2)/18));
+  const nr=3+Math.min(6,Math.floor(rc/4));
+  for(let i=0;i<nr;i++){const rr=rng(500+i);const a=Math.PI*(1.15+.7*i/(nr-1||1))+(rr()-.5)*.2;let x=cxT,y=gy+2,len=rl*(.7+rr()*.5),w=trunkW*.45;const pts=[[x,y]];
+    for(let k=0;k<6;k++){const aa=a+(rr()-.5)*.5;x+=Math.cos(aa)*len/6;y-=Math.sin(aa)*len/6*.7;pts.push([x,y])}roots.push({pts,w})}
+  let minX=cxT,maxX=cxT,minY=gy;segs.forEach(q=>{minX=Math.min(minX,q.ex,q.x);maxX=Math.max(maxX,q.ex,q.x);minY=Math.min(minY,q.ey)});leaves.forEach(q=>{minX=Math.min(minX,q.x);maxX=Math.max(maxX,q.x);minY=Math.min(minY,q.y)});
+  const top=78,side=14;let fit=1;if(minY<top)fit=Math.min(fit,(gy-top)/(gy-minY));if(minX<side)fit=Math.min(fit,(cxT-side)/(cxT-minX));if(maxX>W-side)fit=Math.min(fit,(W-side-cxT)/(maxX-cxT));
+  if(n<5)fit*=.55+.09*n;
+  built={gy,cxT,trunkH,trunkW,segs,leaves,flowers,fruits,knots,roots,si,fit,blobs}}
+
+function drawLeaf(x,y,rot,sz,col,alpha){ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.globalAlpha=alpha;ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(-sz,0);ctx.quadraticCurveTo(0,-sz*.75,sz,0);ctx.quadraticCurveTo(0,sz*.75,-sz,0);ctx.fill();ctx.restore()}
+let t=0,tPrev=performance.now();
+function frame(tn){
+  const dt=clamp((tn-tPrev)/1000,0,.04);tPrev=tn;t+=dt;
+  if(!W){resize()}if(!built)build();
+  const b=built,s=season(),h=new Date().getHours(),night=h<6||h>=18;
+  gust=Math.max(0,gust-dt*.6);wind=(reduce?0:.012+.05*gust)*Math.sin(t*1.3)+(reduce?0:.006*Math.sin(t*3.1));
+  // 空
+  const sk=(night?NIGHT:SKY)[s];const g=ctx.createLinearGradient(0,0,0,b.gy);g.addColorStop(0,sk[0]);g.addColorStop(1,sk[1]);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  if(!night){const sun=ctx.createRadialGradient(W*.82,H*.14,0,W*.82,H*.14,90);sun.addColorStop(0,"rgba(255,250,230,.8)");sun.addColorStop(1,"rgba(255,250,230,0)");ctx.fillStyle=sun;ctx.fillRect(0,0,W,H)}
+  else{ctx.fillStyle="rgba(255,255,240,.8)";for(let i=0;i<40;i++){const r=rng(i+3);ctx.globalAlpha=.3+.4*Math.abs(Math.sin(t*.7+i));ctx.fillRect(r()*W,r()*b.gy*.7,1.3,1.3)}ctx.globalAlpha=1}
+  // 遠くの丘
+  ctx.fillStyle=s==="winter"?"rgba(220,226,232,.9)":night?"rgba(40,52,52,.7)":s==="autumn"?"rgba(190,160,110,.45)":"rgba(140,175,140,.45)";
+  ctx.beginPath();ctx.moveTo(0,b.gy);ctx.quadraticCurveTo(W*.25,b.gy-30,W*.5,b.gy-12);ctx.quadraticCurveTo(W*.78,b.gy+6,W,b.gy-22);ctx.lineTo(W,b.gy);ctx.fill();
+  // 地面と土の断面
+  ctx.fillStyle=s==="winter"?"#eef1f3":night?"#2b3a2c":s==="autumn"?"#b59a62":"#8fae73";ctx.fillRect(0,b.gy-3,W,8);
+  const fallen=st.records.length;const soilTop=b.gy+5;const sg=ctx.createLinearGradient(0,soilTop,0,H);
+  const rich=clamp(fallen/150,0,1);sg.addColorStop(0,"hsl(28,"+(30+15*rich)+"%,"+(32-8*rich)+"%)");sg.addColorStop(1,"hsl(25,30%,"+(18-6*rich)+"%)");ctx.fillStyle=sg;ctx.fillRect(0,soilTop,W,H-soilTop);
+  // 土に還った葉（腐葉土の粒）
+  {const r=rng(42);ctx.fillStyle="rgba(70,45,25,.45)";for(let i=0;i<Math.min(220,fallen*2);i++){const x=r()*W,y=soilTop+2+r()*12;ctx.fillRect(x,y,2+r()*3,1.2)}}
+  // 根
+  ctx.lineCap="round";ctx.strokeStyle="rgba(214,190,150,.85)";
+  b.roots.forEach(rt=>{ctx.lineWidth=Math.max(1,rt.w);ctx.beginPath();ctx.moveTo(rt.pts[0][0],rt.pts[0][1]);for(let i=1;i<rt.pts.length;i++){ctx.lineWidth=Math.max(.8,rt.w*(1-i/rt.pts.length));ctx.lineTo(rt.pts[i][0],rt.pts[i][1])}ctx.stroke()});
+  ctx.save();ctx.translate(b.cxT,b.gy);ctx.scale(b.fit,b.fit);ctx.translate(-b.cxT,-b.gy);
+  // 枝（風で少し揺れる）
+  const sway=(y,depth)=>wind*(b.gy-y)*.08*(1+Math.max(0,depth)*.5);
+  const bark=night?"#2a211a":"#5b4636";ctx.strokeStyle=bark;
+  b.segs.forEach(sg2=>{const ox=sway(sg2.ey,sg2.depth);ctx.lineWidth=Math.max(.8,sg2.w);ctx.strokeStyle=sg2.broken?"#3a302a":bark;
+    ctx.beginPath();ctx.moveTo(sg2.x+sway(sg2.y,sg2.depth-1),sg2.y);
+    if(sg2.broken){const ax=sg2.mx+sway(sg2.my,sg2.depth),ay=sg2.my;ctx.quadraticCurveTo(sg2.x+(sg2.mx-sg2.x)*.5,sg2.y+(sg2.my-sg2.y)*.5,ax,ay);ctx.stroke();
+      // 折れて垂れた先
+      ctx.globalAlpha=.8;ctx.lineWidth=Math.max(1,sg2.w*.8);ctx.beginPath();ctx.moveTo(ax,ay);ctx.quadraticCurveTo(ax+Math.cos(sg2.ang)*sg2.len*.25,ay+sg2.len*.1,ax+Math.cos(sg2.ang)*sg2.len*.3,ay+sg2.len*.5);ctx.stroke();ctx.globalAlpha=1;
+      ctx.fillStyle="rgba(235,215,180,.95)";ctx.beginPath();ctx.arc(ax,ay,Math.max(1.6,sg2.w*.55),0,Math.PI*2);ctx.fill()}
+    else{ctx.quadraticCurveTo(sg2.mx+sway(sg2.my,sg2.depth),sg2.my,sg2.ex+ox,sg2.ey);ctx.stroke()}});
+  // こぶ・折れ目・手放した節
+  b.knots.forEach(k=>{const ox=sway(k.y,1);if(k.broken){ctx.strokeStyle="#1e1714";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(k.x+ox-k.w*.6,k.y-3);ctx.lineTo(k.x+ox+2,k.y+1);ctx.lineTo(k.x+ox-1,k.y+4);ctx.stroke()}
+    else{ctx.fillStyle=k.scar?"#4a3a2e":"#6b5240";ctx.beginPath();ctx.ellipse(k.x+ox,k.y,Math.max(2.5,k.w*.75),Math.max(2,k.w*.55),0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle=k.scar?"rgba(30,22,16,.6)":"rgba(212,170,80,.85)";ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(k.x+ox,k.y,Math.max(1.5,k.w*.42),Math.max(1.2,k.w*.3),0,0,Math.PI*2);ctx.stroke()}});
+  // 葉
+  const pal=LEAF[s];const leafAlpha=s==="winter"?0:1;
+  if(s!=="winter"){b.blobs.forEach(B=>{const c=pal[B.k%pal.length];const ox=sway(B.y,3);const g2=ctx.createRadialGradient(B.x+ox,B.y,0,B.x+ox,B.y,B.r);
+      const col="hsla("+c[0]+","+c[1]+"%,"+(c[2]*(night?.7:1))+"%,";g2.addColorStop(0,col+(s==="spring"?.35:.5)+")");g2.addColorStop(1,col+"0)");ctx.fillStyle=g2;ctx.beginPath();ctx.arc(B.x+ox,B.y,B.r,0,Math.PI*2);ctx.fill()});
+    b.leaves.forEach((L,i)=>{const c=pal[L.k%pal.length];const ox=sway(L.y,3)+(reduce?0:Math.sin(t*2+L.ph)*.8);
+    const lit=night?.78:1;drawLeaf(L.x+ox,L.y,L.rot+(reduce?0:Math.sin(t*1.5+L.ph)*.15),L.sz*(s==="spring"?.82:1),"hsl("+c[0]+","+c[1]+"%,"+(c[2]*lit)+"%)",.92)})}
+  else{ // 冬：枝先にわずかな枯れ葉と雪
+    b.leaves.forEach((L,i)=>{if(i%23)return;drawLeaf(L.x,L.y,L.rot,L.sz*.8,night?"hsl(28,20%,26%)":"hsl(28,30%,52%)",.85)});
+    ctx.fillStyle="rgba(255,255,255,.85)";b.segs.forEach((sg2,i)=>{if(sg2.depth<1||i%2)return;ctx.beginPath();ctx.ellipse(sg2.mx+sway(sg2.my,sg2.depth),sg2.my-sg2.w*.5-1,Math.min(5,Math.max(1.5,sg2.len*.07)),1.3,0,0,Math.PI*2);ctx.fill()})}
+  // 花
+  b.flowers.forEach(F=>{const ox=sway(F.y,3);const bloom=s==="spring"||s==="summer";const r=bloom?3.4:1.8;ctx.fillStyle="hsl("+F.hue+","+(bloom?70:40)+"%,"+(night?48:72)+"%)";
+    for(let k=0;k<5;k++){const a=k/5*Math.PI*2+F.ph;ctx.beginPath();ctx.arc(F.x+ox+Math.cos(a)*r*.9,F.y+Math.sin(a)*r*.9,r*.7,0,Math.PI*2);ctx.fill()}
+    ctx.fillStyle="#f6d77a";ctx.beginPath();ctx.arc(F.x+ox,F.y,r*.45,0,Math.PI*2);ctx.fill()});
+  // 実
+  b.fruits.forEach(F=>{const ox=sway(F.y,3)+(reduce?0:Math.sin(t*1.7+F.ph)*.8);F.sx=F.x+ox;F.sy=F.y;F.hx=b.cxT+(F.sx-b.cxT)*b.fit;F.hy=b.gy+(F.y-b.gy)*b.fit;
+    ctx.strokeStyle="#5b4636";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(F.sx,F.y-6);ctx.lineTo(F.sx,F.y-2);ctx.stroke();
+    const gg=ctx.createRadialGradient(F.sx-1.5,F.y-1.5,.5,F.sx,F.y,5.5);gg.addColorStop(0,"#ffd3a0");gg.addColorStop(1,s==="autumn"?"#c8542e":"#d9763a");ctx.fillStyle=gg;ctx.beginPath();ctx.arc(F.sx,F.y+1,5,0,Math.PI*2);ctx.fill()});
+  ctx.restore();
+  // 舞う葉・花びら・雪
+  if(!reduce){const want=s==="autumn"?14:s==="spring"?10:s==="winter"?40:0;while(fallers.length<want)fallers.push({x:Math.random()*W,y:Math.random()*b.gy,v:12+Math.random()*20,ph:Math.random()*6});while(fallers.length>want)fallers.pop();
+    fallers.forEach(f=>{f.y+=f.v*dt*(s==="winter"?1.3:1);f.x+=(Math.sin(t+f.ph)*12+gust*40)*dt;if(f.y>b.gy){f.y=-5;f.x=Math.random()*W}
+      if(s==="winter"){ctx.fillStyle="rgba(255,255,255,.85)";ctx.beginPath();ctx.arc(f.x,f.y,1.6,0,Math.PI*2);ctx.fill()}
+      else drawLeaf(f.x,f.y,t*2+f.ph,s==="spring"?2.4:3.6,s==="spring"?"hsl(345,60%,86%)":"hsl("+(15+f.ph*6)+",70%,52%)",.9)})}
+  // 嵐のあと（直していない間は、空が少し暗い）
+  if(openStorm()){ctx.fillStyle="rgba(40,46,58,.12)";ctx.fillRect(0,0,W,b.gy)}
+  requestAnimationFrame(frame)}
+
+/* タップ：実なら気づきを読む。ほかは風が吹いて葉がゆれる */
+cv.addEventListener("click",e=>{const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  if(built){let best=null,bd=18;built.fruits.forEach(F=>{const d=Math.hypot((F.hx||F.x)-x,(F.hy||F.y)-y);if(d<bd){bd=d;best=F}});
+    if(best){const p=best.r.date.split("-");$("cardH").textContent=(+p[1])+"/"+(+p[2])+"の実　─　"+best.r.text;$("cardB").textContent=best.r.insight;$("card").hidden=false;return}}
+  gust=1;$("card").hidden=true});
+$("cardX").addEventListener("click",()=>{$("card").hidden=true});
+
+/* ---------- 画面 ---------- */
+let current="grow",toast="",draft={text:"",care:"",value:"",strengths:[],insight:""},storm={on:false,branch:"",size:1,text:""},delAsk=null,valDraft=null,valAdd="",retireAsk=null;
+function renderHead(){const si=stageIdx();$("ttl").textContent=STAGES[si][1];const D=days();$("age").textContent=st.records.length?"記録した日 "+D+"日・葉 "+st.records.length+"枚":"最初の記録で芽が出ます";
+  const s=season();$("season").textContent=SEASONS[s]+(preview?"（見本）":"");$("sekki").textContent=preview?"":sekki(new Date());const h=new Date().getHours();$("wtop").classList.toggle("night",h<6||h>=18)}
+function branchOptions(){return st.values.map(v=>'<button class="chip" data-br="'+esc(v)+'" aria-pressed="'+(draft.value===v)+'">'+esc(v)+'の枝</button>').join("")}
+function renderGrow(){
+  const v=$("v-grow");let h="";
+  if(!st.values.length)h+='<div class="banner">はじめに「枝と設定」で、人生で大切にしたいことを3〜5つ選んでください。それぞれが大きな枝になります。<br><button class="link" data-goto="set">枝を決める</button></div>';
+  const os=openStorm();if(os)h+='<div class="banner"><b>嵐のあと</b><br>「'+esc(os.text||"しんどい出来事")+'」で枝が折れています（'+os.prog+'/'+os.need+'）。お世話を記録するたびに治っていき、治るとその場所は「こぶ」になって、前より太くなります。休む・つながるは2つ分進みます。</div>';
+  h+='<div class="section"><h2>きょう、心のためにしたこと</h2>'+
+    '<div class="field"><textarea id="g-text" placeholder="例：早めに布団に入った／同僚に自分から声をかけた">'+esc(draft.text)+'</textarea><span class="hint">記録1つで、葉が1枚ふえます。</span></div>'+
+    '<div class="field"><span class="lbl">お世話の種類</span><div class="grid5">'+CARE.map(c=>'<button data-care="'+c[0]+'" aria-pressed="'+(draft.care===c[0])+'"><b>'+c[1]+'</b><span>'+c[2]+'<br>→'+c[3]+'が育つ</span></button>').join("")+'</div></div>'+
+    (st.values.length?'<div class="field"><span class="lbl">どの枝の葉？（人生のどの領域か）</span><div class="chips">'+branchOptions()+'</div></div>':"")+
+    '<div class="field"><span class="lbl">使った強み（任意）→ 花が咲く</span><div class="chips">'+STRENGTHS.map(s=>'<button class="chip" data-str="'+s[0]+'" aria-pressed="'+draft.strengths.includes(s[0])+'" style="--c:hsl('+s[1]+',62%,62%)"><span class="dot"></span>'+s[0]+'</button>').join("")+'</div></div>'+
+    '<div class="field"><span class="lbl">気づき・学んだこと（任意）→ 実がなる</span><textarea id="g-ins" placeholder="例：先に声をかけると、思ったより話しやすかった">'+esc(draft.insight)+'</textarea><span class="hint">実をタップすると、いつでも読み返せます。</span></div>'+
+    '<div class="btnrow"><button class="primary" id="g-save" '+(draft.care&&draft.text.trim()?"":"disabled")+'>記録する</button></div><div class="toast">'+esc(toast)+'</div></div>';
+  h+='<details class="section box" '+(storm.on?"open":"")+' id="stormBox"><summary><h2>嵐が来た（しんどい出来事）</h2></summary>'+
+    '<p class="small muted">書くと、その枝が折れます。お世話を重ねると治り、折れた場所は「こぶ」になって前より太くなります。育ちが減ることはありません。</p>'+
+    '<div class="field"><textarea id="s-text" placeholder="何があったか（書かなくても大丈夫です）">'+esc(storm.text)+'</textarea></div>'+
+    '<div class="field"><span class="lbl">どこに当たった？</span><div class="chips"><button class="chip" data-sbr="trunk" aria-pressed="'+(storm.branch==="trunk")+'">幹（自分そのもの）</button>'+st.values.map(v=>'<button class="chip" data-sbr="'+esc(v)+'" aria-pressed="'+(storm.branch===v)+'">'+esc(v)+'の枝</button>').join("")+'</div></div>'+
+    '<div class="field"><span class="lbl">強さ</span><div class="seg2">'+SIZES.map((x,i)=>'<button data-ssz="'+i+'" aria-pressed="'+(storm.size===i)+'">'+x[0]+'</button>').join("")+'</div></div>'+
+    '<div class="btnrow"><button class="ghost" id="s-save" '+(storm.branch?"":"disabled")+'>嵐を記録する</button></div></details>';
+  v.innerHTML=h}
+function renderLook(){
+  const v=$("v-look"),n=st.records.length,si=stageIdx(),next=STAGES[si+1];
+  const rootN=cnt(r=>r.care==="rest"||r.care==="tidy"),fl=cnt(r=>(r.strengths||[]).length),fr=cnt(r=>r.insight&&r.insight.trim()),kn=st.storms.filter(s=>s.prog>=s.need).length;
+  let h='<div class="section"><h2>'+STAGES[si][1]+'</h2>'+(next?'<p class="small muted">「'+next[1]+'」まで、あと '+(next[0]-n)+' 枚の葉</p>':'<p class="small muted">いちばん大きな姿です</p>')+
+    '<div class="parts">'+
+    [["根",rootN,"休む・ととのえる。土台が深く広がる"],["幹",days()+"日","記録した日の数。太く高くなる"],["枝",st.values.length,"人生で大切にしたいこと"],["葉",n,"日々の行動"],["花",fl,"強みを使ったこと"],["実",fr,"気づき・学び"],["こぶ",kn,"嵐を乗りこえた跡"],["土に還った葉",n,"季節がめぐるたびに根の栄養に"],["手放した枝",st.retired.length,"区切りをつけたこと"]]
+    .map(p=>'<div class="part"><b>'+p[1]+'</b><em>'+p[0]+'</em><span>'+p[2]+'</span></div>').join("")+'</div></div>';
+  if(st.values.length){h+='<div class="section"><h2>枝ごとの葉</h2><div class="parts">'+st.values.map(x=>'<div class="part"><b>'+cnt(r=>r.value===x)+'</b><em>'+esc(x)+'</em></div>').join("")+'</div></div>'}
+  h+='<div class="section"><h2>季節を見る</h2><p class="small muted">いつもは、いまの暦の季節で描きます。ほかの季節の木を、ためしに見られます。</p><div class="seg2">'+[["","いま"],["spring","春"],["summer","夏"],["autumn","秋"],["winter","冬"]].map(x=>'<button data-pv="'+x[0]+'" aria-pressed="'+((preview||"")===x[0])+'">'+x[1]+'</button>').join("")+'</div>'+
+    '<p class="note">冬になると葉は落ちますが、記録は消えません。落ちた葉は土に還り、土が少しずつ豊かになっていきます。春になると、また全部の葉が芽吹きます。</p></div>';
+  v.innerHTML=h}
+function renderLog(){
+  const v=$("v-log");const items=st.records.map(r=>({id:r.id,at:r.at||0,date:r.date,kind:"rec",t:r.text,sub:[CARE_MAP[r.care]?CARE_MAP[r.care][1]:"",r.value?r.value+"の枝":"",(r.strengths||[]).join("・"),r.insight?"実：「"+r.insight+"」":""].filter(Boolean).join("　")}))
+    .concat(st.storms.map(s=>({id:s.id,at:s.at||0,date:s.date,kind:"storm",t:s.text||"嵐",sub:"嵐・"+(s.branch==="trunk"?"幹":s.branch+"の枝")+"・"+SIZES[s.size][0]+"・"+(s.prog>=s.need?"こぶになった":"治り途中 "+s.prog+"/"+s.need)}))).sort((a,b)=>b.at-a.at);
+  let h='<div class="section"><h2>これまでの記録</h2>';if(!items.length)h+='<p class="small muted">まだ記録はありません。</p>';
+  items.forEach(it=>{const p=it.date.split("-");h+='<div class="rec"><span class="d">'+(+p[1])+'/'+(+p[2])+'</span><span class="t">'+esc(it.t)+'<small>'+esc(it.sub)+'</small></span>'+(delAsk===it.id?'<span class="btnrow"><button class="ghost" data-delok="'+it.id+'" data-kind="'+it.kind+'">削除</button><button class="link" data-delno="1">やめる</button></span>':'<button class="link" data-del="'+it.id+'">削除</button>')+'</div>'});
+  h+='<p class="note">記録を削除すると、その葉・花・実も木から消えます。</p></div>';
+  h+='<div class="section"><h2>データの控え</h2><p class="note">記録はこの端末のこのブラウザだけに保存されます。ときどき控えを取ってください。</p><div class="btnrow"><button class="ghost" id="exp">控えを表示してコピー</button><button class="ghost" id="impOpen">控えから戻す</button></div><textarea id="bk" hidden></textarea><button class="ghost" id="imp" hidden>この内容で戻す</button><div class="toast" id="bkToast"></div></div>';
+  v.innerHTML=h}
+function renderSet(){
+  const v=$("v-set");if(!valDraft)valDraft=st.values.slice();const all=VALUE_IDEAS.concat(valDraft.filter(x=>!VALUE_IDEAS.includes(x)));
+  let h='<div class="section"><h2>枝（人生で大切にしたいこと）</h2><p class="small muted">3〜5つ選ぶと、それぞれが幹から伸びる大きな枝になります。仕事・家族・健康などの「領域」でも、誠実さ・挑戦などの「価値」でも構いません。</p>'+
+    '<div class="chips">'+all.map(x=>'<button class="chip" data-pick="'+esc(x)+'" aria-pressed="'+valDraft.includes(x)+'">'+esc(x)+'</button>').join("")+'</div>'+
+    '<div class="btnrow"><input type="text" id="valAdd" placeholder="ほかのことを書く" maxlength="12" style="flex:1;min-width:0" value="'+esc(valAdd)+'"><button class="ghost" id="valAddBtn">追加</button></div>'+
+    '<div class="btnrow"><button class="primary" id="valSave" '+(valDraft.length>=1&&valDraft.length<=5?"":"disabled")+'>この枝にする（'+valDraft.length+'/5）</button></div><div class="toast" id="valToast"></div>'+
+    '<p class="note">外した枝の葉は、てっぺんの小枝に移ります（記録は消えません）。</p></div>';
+  h+='<div class="section"><h2>このアプリについて</h2><p class="note">人生の木は、心のためにした行動を葉として重ね、人生の木を育てるアプリです。根は土台、幹は続けてきた日々、枝は大切にしたいこと、葉は行動、花は強み、実は気づき。嵐で折れた枝も、お世話を重ねると「こぶ」になって、前より太くなります。</p></div>';
+  v.innerHTML=h}
+function show(n){current=n;document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===n));["grow","look","log","set"].forEach(k=>$("v-"+k).hidden=k!==n);
+  ({grow:renderGrow,look:renderLook,log:renderLog,set:()=>{valDraft=null;renderSet()}})[n]()}
+document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b)show(b.dataset.v)});
+const tog=(arr,x)=>{const i=arr.indexOf(x);if(i>=0)arr.splice(i,1);else arr.push(x)};
+const rebuild=()=>{built=null;renderHead()};
+$("v-grow").addEventListener("input",e=>{const t=e.target;if(t.id==="g-text"){draft.text=t.value;$("g-save").disabled=!(draft.care&&draft.text.trim())}if(t.id==="g-ins")draft.insight=t.value;if(t.id==="s-text")storm.text=t.value});
+$("v-grow").addEventListener("toggle",e=>{if(e.target.id==="stormBox")storm.on=e.target.open},true);
+$("v-grow").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.goto){show(b.dataset.goto);return}
+  if(b.dataset.care){draft.care=draft.care===b.dataset.care?"":b.dataset.care;toast="";renderGrow();return}
+  if(b.dataset.br){draft.value=draft.value===b.dataset.br?"":b.dataset.br;renderGrow();return}
+  if(b.dataset.str){tog(draft.strengths,b.dataset.str);renderGrow();return}
+  if(b.dataset.sbr){storm.branch=storm.branch===b.dataset.sbr?"":b.dataset.sbr;renderGrow();return}
+  if(b.dataset.ssz){storm.size=+b.dataset.ssz;renderGrow();return}
+  if(b.id==="g-save"){const before=stageIdx();st.records.push({id:uid(),date:TODAY,at:Date.now(),text:draft.text.trim(),care:draft.care,value:draft.value,strengths:draft.strengths.slice(),insight:draft.insight.trim()});
+    const extra=[];const os=openStorm();if(os){os.prog=Math.min(os.need,os.prog+(draft.care==="rest"||draft.care==="connect"?2:1));if(os.prog>=os.need)extra.push("折れた枝が治り、こぶになりました。")}
+    persist();const after=stageIdx();toast=(after>before?"「"+STAGES[after][1]+"」に育ちました！":"葉が1枚ふえました。")+(draft.strengths.length?"花が咲きました。":"")+(draft.insight.trim()?"実がなりました。":"")+extra.join("");
+    draft={text:"",care:"",value:"",strengths:[],insight:""};rebuild();gust=.6;renderGrow();window.scrollTo({top:0,behavior:reduce?"auto":"smooth"});return}
+  if(b.id==="s-save"){const sz=SIZES[storm.size];const br=storm.branch==="trunk"?"trunk":"v:"+storm.branch;
+    // 折れる場所：その枝の、まだ折れていない小枝を選ぶ
+    const used=new Set(st.storms.filter(s=>s.branch===br).map(s=>s.path));const cand=br==="trunk"?["0"]:["0.0","0.1","0.2","0.0.0","0.1.0","0.2.1","0.0.1","0.1.1"].filter(p=>!used.has(p));
+    st.storms.push({id:uid(),date:TODAY,at:Date.now(),text:storm.text.trim(),branch:br,path:br==="trunk"?"trunk":(cand[0]||"0.0"),size:storm.size,need:sz[1],prog:0});
+    persist();storm={on:false,branch:"",size:1,text:""};toast="嵐で枝が折れました。お世話を記録するたびに、治っていきます。";gust=1.5;rebuild();renderGrow();window.scrollTo({top:0,behavior:reduce?"auto":"smooth"});return}});
+$("v-look").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.pv!=null){preview=b.dataset.pv||null;fallers.length=0;renderHead();renderLook()}});
+$("v-log").addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.del){delAsk=b.dataset.del;renderLog();return}if(b.dataset.delno){delAsk=null;renderLog();return}
+  if(b.dataset.delok){const id=b.dataset.delok;if(b.dataset.kind==="rec")st.records=st.records.filter(r=>r.id!==id);else st.storms=st.storms.filter(s=>s.id!==id);delAsk=null;persist();rebuild();renderLog();return}
+  if(b.id==="exp"){const s=JSON.stringify(st),ta=$("bk");ta.hidden=false;ta.value=s;$("imp").hidden=true;try{await navigator.clipboard.writeText(s);$("bkToast").textContent="コピーしました。メモアプリなどに貼って保管してください。"}catch(_){ta.select();$("bkToast").textContent="下の文字を全選択してコピーしてください。"}return}
+  if(b.id==="impOpen"){const ta=$("bk");ta.hidden=false;ta.value="";ta.placeholder="控えの文字をここに貼り付け";$("imp").hidden=false;return}
+  if(b.id==="imp"){try{const d=JSON.parse($("bk").value);if(!d||!Array.isArray(d.records))throw 0;const ids=new Set(st.records.map(r=>r.id));let n=0;d.records.forEach(r=>{if(r&&r.id&&!ids.has(r.id)){st.records.push(r);n++}});
+    (d.storms||[]).forEach(s=>{if(!st.storms.some(x=>x.id===s.id))st.storms.push(s)});if(!st.values.length&&d.values)st.values=d.values;st.records.sort((a,b)=>(a.at||0)-(b.at||0));persist();rebuild();renderLog();$("bkToast").textContent=n+"件を戻しました。"}catch(_){$("bkToast").textContent="読み込めませんでした。"}return}});
+$("v-set").addEventListener("input",e=>{if(e.target.id==="valAdd")valAdd=e.target.value});
+$("v-set").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.pick){const x=b.dataset.pick,i=valDraft.indexOf(x);if(i>=0)valDraft.splice(i,1);else if(valDraft.length<5)valDraft.push(x);renderSet();return}
+  if(b.id==="valAddBtn"){const x=valAdd.trim();if(x&&!valDraft.includes(x)&&valDraft.length<5)valDraft.push(x);valAdd="";renderSet();return}
+  if(b.id==="valSave"){st.values=valDraft.slice();persist();rebuild();renderSet();$("valToast").textContent="枝を決めました。";return}});
+
+resize();renderHead();renderGrow();requestAnimationFrame(frame);if("serviceWorker" in navigator&&location.protocol==="https:"){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+})();
+</script>
+</body>
+</html>
