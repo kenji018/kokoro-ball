@@ -199,7 +199,7 @@ function build(){if(st.shape==="cedar")return buildCedar();
     (tips[id]=tips[id]||[]).push({x:ex,y:ey,depth});
     if(depth>=maxD)return;
     const k=depth===0?3:2;
-    for(let i=0;i<k;i++){const t=depth===0?.45+i*.22:.65+i*.25;const bx=x+(ex-x)*t,by=y+(ey-y)*t;const sgn=i%2?1:-1;
+    for(let i=0;i<k;i++){const t=um?(depth===0?.32+i*.24:.45+i*.3):depth===0?.45+i*.22:.65+i*.25;const bx=x+(ex-x)*t,by=y+(ey-y)*t;const sgn=i%2?1:-1;
       let na=ang+sgn*(.38+rnd()*.35);if(um){na=ang+sgn*(.3+rnd()*.3);na+=(Math.PI/2-na)*.1}
       branch(id,bx,by,na,len*(um?.72+rnd()*.1:.62+rnd()*.12),Math.max(.8,w*(um?.66:.62)),depth+1,maxD,seed*31+i*7+depth,path+"."+i)}
   }
@@ -208,9 +208,9 @@ function build(){if(st.shape==="cedar")return buildCedar();
   segs.push({x:cxT,y:gy,mx:cxT+4,my:gy-trunkH*.5,ex:cxT-2,ey:gy-trunkH,w:trunkW,depth:-1,id:"trunk",ang:Math.PI/2,len:trunkH});
   const tst=storms.find(s=>s.branch==="trunk");if(tst)knots.push({x:cxT+3,y:gy-trunkH*.45,broken:tst.prog<tst.need,w:trunkW*1.1});
   // 価値ごとの大枝
-  vals.forEach((v,i)=>{const c=cnt(r=>r.value===v);const h=um?gy-trunkH*(.78+.22*((i*53)%10)/10):gy-trunkH*(.42+.5*(nv===1?.5:i/(nv-1)));const side=i%2?1:-1;
-    const ang=um?Math.PI/2+side*(.32+.72*(Math.floor(i/2)+.5)/Math.ceil(nv/2)):Math.PI/2+side*(.62+.22*((i*37)%10)/10);let len=18+Math.min(W*.33,(W*.1+W*.25*(1-Math.exp(-c/14))))*(.55+.45*(1-Math.exp(-n/30)));if(um)len*=1.25;
-    const maxD=c<2?1:c<6?2:c<16?3:4;branch("v:"+v,cxT+side*trunkW*.3,h,ang,len,trunkW*(um?.45:.55),0,maxD,hashStr(v)+11,"0")});
+  vals.forEach((v,i)=>{const c=cnt(r=>r.value===v);const rk=nv===1?.5:i/(nv-1);const h=um?gy-trunkH*(.58+.4*rk):gy-trunkH*(.42+.5*(nv===1?.5:i/(nv-1)));const side=i%2?1:-1;
+    const ang=um?Math.PI/2+side*(.92-.5*rk):Math.PI/2+side*(.62+.22*((i*37)%10)/10);let len=18+Math.min(W*.33,(W*.1+W*.25*(1-Math.exp(-c/14))))*(.55+.45*(1-Math.exp(-n/30)));if(um)len*=1.25*(1.12-.25*rk);
+    const maxD=c<2?1:c<6?2:c<16?3:4;branch("v:"+v,cxT+side*trunkW*.3,h,ang,len,trunkW*(um?.52-.16*rk:.55),0,maxD,hashStr(v)+11,"0")});
   // てっぺん（どの枝でもない記録）
   {const c=cnt(r=>!r.value||!vals.includes(r.value));const maxD=c<3?1:c<10?2:3;
     if(um){const L=(30+W*.2*(1-Math.exp(-n/30)));branch("top",cxT,gy-trunkH,Math.PI/2+.22,L,trunkW*.5,0,si<1?0:Math.max(2,maxD),977,"0");branch("top",cxT,gy-trunkH,Math.PI/2-.22,L,trunkW*.5,0,si<1?0:Math.max(2,maxD),1977,"1")}
@@ -236,20 +236,20 @@ function build(){if(st.shape==="cedar")return buildCedar();
     const span=Math.max(cxT-x0,x1-cxT)*1.06,rr=rng(4242),yb=gy-trunkH*1.28,hc=span*(.72+.1*dens);
     const topY=u=>yb-hc*Math.pow(Math.max(0,1-u*u),.48),botY=u=>yb+trunkH*(.06+.16*Math.pow(Math.abs(u),1.2));
     for(let i=blobs.length-1;i>=0;i--)if(blobs[i].l==null)blobs.splice(i,1);
-    const C=Math.max(12,span*.125);
+    const C=Math.max(9,span*.085);
     for(let yy=yb-hc+C*.35;yy<=yb+trunkH*.34;yy+=C*.62)for(let xx=cxT-span+C*.3+((Math.round((yy-yb)/C*1.6))%2?C*.35:0);xx<=cxT+span;xx+=C*.7){
       const cx=xx+(rr()-.5)*C*.3,cy=yy+(rr()-.5)*C*.25,u=(cx-cxT)/span;if(Math.abs(u)>.98)continue;const t0=topY(u),t1=botY(u);if(cy<t0+C*.25||cy>t1)continue;
       const v=(cy-t0)/Math.max(1,t1-t0);
       // 下の内側はすき間を多くして、大枝が見えるように
       const inner=Math.abs(u)<.55&&v>.5;if(inner&&rr()<.72)continue;
       const front=!(inner)&&(v<.55||Math.abs(u)>.5),base=1.22-.45*v-.06*Math.abs(u),cr=C*(.42+rr()*.14)*(.75+.25*dens);
-      const parts=4+Math.floor(rr()*3);
+      const parts=3+Math.floor(rr()*3);
       for(let k=0;k<parts;k++){const a=rr()*Math.PI*2,d=rr()*cr*.6,dy=Math.sin(a)*d*.75;
         blobs.push({x:cx+Math.cos(a)*d,y:cy+dy,r:cr*(.5+rr()*.28),k:Math.floor(rr()*3),l:base-.22*(dy/cr)+.06*(rr()-.5),front})}
-      const lv=Math.round(6+22*dens);for(let q=0;q<lv;q++){const a=rr()*Math.PI*2,d=rr()*cr*.95,dy=Math.sin(a)*d*.8;
+      const lv=Math.round(4+12*dens);for(let q=0;q<lv;q++){const a=rr()*Math.PI*2,d=rr()*cr*.95,dy=Math.sin(a)*d*.8;
         leaves.push({x:cx+Math.cos(a)*d,y:cy+dy,rot:rr()*Math.PI,sz:3+rr()*2.2,k:Math.floor(rr()*4),ph:rr()*6,l:base+.1-.25*(dy/cr)})}}
     blobs.sort((p,q)=>p.l-q.l);
-    for(let i=segs.length-1;i>=0;i--){const q=segs[i];if(q.depth<2)continue;const u=(q.ex-cxT)/span;if(Math.abs(u)>1||q.ey<topY(u)+4)segs.splice(i,1)}
+    for(let i=segs.length-1;i>=0;i--){const q=segs[i];if(q.depth<2)continue;const u=(q.ex-cxT)/span;if(Math.abs(u)>1||q.ey<topY(u)+4||q.ey>botY(u)+2)segs.splice(i,1)}
     const inside=(x,y)=>{const u=(x-cxT)/span;return Math.abs(u)<=1&&y>=topY(u)-3&&y<=botY(u)+3};
     for(let i=leaves.length-1;i>=0;i--){const L=leaves[i];if(L.l==null&&!inside(L.x,L.y))leaves.splice(i,1)}
     [flowers,fruits].forEach(arr=>arr.forEach(F=>{const u=clamp((F.x-cxT)/span,-.95,.95);F.x=cxT+u*span;const t0=topY(u),t1=botY(u);if(F.y<t0+6||F.y>t1-2)F.y=t0+8+rr()*Math.max(1,(t1-t0)*.45)}));
