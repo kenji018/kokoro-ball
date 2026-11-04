@@ -169,7 +169,7 @@ function fallenLeaves(){const s=realSeason(new Date());const y=new Date().getFul
   const cutoff=s==="winter"||s==="spring"?null:null;let n=0;st.records.forEach(r=>{const d=new Date(r.at||Date.parse(r.date));if(Date.now()-d.getTime()>200*864e5)n++});return n}
 
 /* ---------- 描画 ---------- */
-const cv=$("tree"),ctx=cv.getContext("2d");let W=0,H=0,DPR=1;
+const cv=$("tree");let ctx=cv.getContext("2d");const mainCtx=ctx;const layer=document.createElement("canvas");let layerKey="";let W=0,H=0,DPR=1;
 function resize(){DPR=Math.min(2,devicePixelRatio||1);const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);built=null}
 addEventListener("resize",resize);
 let preview=null;const season=()=>preview||realSeason(new Date());
@@ -182,7 +182,7 @@ let built=null,gust=0,wind=0;const fallers=[];
 function build(){
   const gy=H*.72,cxT=W/2,R=st.records,n=R.length,D=days(),si=stageIdx();
   const trunkH=40+H*.34*(1-Math.exp(-(n+2)/40))+Math.min(30,D*.6);
-  const trunkW=4+18*(1-Math.exp(-(D+1)/45));
+  const trunkW=(4+18*(1-Math.exp(-(D+1)/45)))*[1,1,1.08,1.3,1.6][si];
   const segs=[],tips={},knots=[];
   const storms=st.storms;
   // 枝を描く（再帰）
@@ -215,12 +215,18 @@ function build(){
   st.retired.forEach((v,i)=>{const h=gy-trunkH*(.25+.12*(i%4));knots.push({x:cxT+(i%2?1:-1)*trunkW*.48,y:h,broken:false,w:trunkW*.35,scar:true})});
   // 葉・花・実の場所
   const leaves=[],flowers=[],fruits=[],blobs=[];
+  const dens=1-Math.exp(-n/45),perRec=9+si*4,spread=9+si*3;
   R.forEach((r,idx)=>{const key=r.value&&vals.includes(r.value)?"v:"+r.value:"top";let T=tips[key];if(!T||!T.length)T=tips.top||[{x:cxT,y:gy-trunkH}];
     const rr=rng(hashStr(r.id));const tp=T[Math.floor(rr()*T.length)];const a=rr()*Math.PI*2,d=4+rr()*14;
-    const lx=tp.x+Math.cos(a)*d,ly=tp.y+Math.sin(a)*d*.8;blobs.push({x:lx,y:ly,r:13+rr()*7,k:Math.floor(rr()*3)});
-    for(let q=0;q<9;q++){const a4=rr()*Math.PI*2,d4=rr()*9;leaves.push({x:lx+Math.cos(a4)*d4,y:ly+Math.sin(a4)*d4*.8,rot:rr()*Math.PI,sz:3.6+rr()*2.4,k:Math.floor(rr()*4),ph:rr()*6,r,main:q===0})}
+    const lx=tp.x+Math.cos(a)*d,ly=tp.y+Math.sin(a)*d*.8;blobs.push({x:lx,y:ly,r:13+rr()*7+si*3,k:Math.floor(rr()*3)});
+    for(let q=0;q<perRec;q++){const a4=rr()*Math.PI*2,d4=rr()*spread;leaves.push({x:lx+Math.cos(a4)*d4,y:ly+Math.sin(a4)*d4*.8,rot:rr()*Math.PI,sz:3.6+rr()*2.4,k:Math.floor(rr()*4),ph:rr()*6,r,main:q===0})}
     (r.strengths||[]).forEach((s,j)=>{const a2=rr()*Math.PI*2;flowers.push({x:tp.x+Math.cos(a2)*(6+rr()*10),y:tp.y+Math.sin(a2)*(6+rr()*8),hue:SH[s]||340,ph:rr()*6})});
     if(r.insight&&r.insight.trim()){const a3=rr()*Math.PI;fruits.push({x:tp.x+Math.cos(a3)*8,y:tp.y+8+rr()*6,r,ph:rr()*6})}});
+  // 葉が増えるほど、枝先全体がこんもり茂る
+  {const all=[];Object.values(tips).forEach(T=>T.forEach(tp=>{if(tp.depth>=1)all.push(tp)}));const rr=rng(9001);
+    if(all.length&&n>=5){all.forEach(tp=>{if(rr()<.25+.75*dens)blobs.push({x:tp.x+(rr()-.5)*8,y:tp.y+(rr()-.5)*6,r:(10+16*dens)*(.8+rr()*.4),k:Math.floor(rr()*3)})});
+      const fill=Math.min(1800,Math.round(n*3.2*dens));for(let i=0;i<fill;i++){const tp=all[Math.floor(rr()*all.length)];const a=rr()*Math.PI*2,d=rr()*(10+14*dens);
+        leaves.push({x:tp.x+Math.cos(a)*d,y:tp.y+Math.sin(a)*d*.75,rot:rr()*Math.PI,sz:3.4+rr()*2.4,k:Math.floor(rr()*4),ph:rr()*6})}}}
   // 根
   const roots=[];const rc=cnt(r=>r.care==="rest"||r.care==="tidy");const rl=20+H*.2*(1-Math.exp(-(rc+2)/18));
   const nr=3+Math.min(6,Math.floor(rc/4));
@@ -229,8 +235,58 @@ function build(){
   let minX=cxT,maxX=cxT,minY=gy;segs.forEach(q=>{minX=Math.min(minX,q.ex,q.x);maxX=Math.max(maxX,q.ex,q.x);minY=Math.min(minY,q.ey)});leaves.forEach(q=>{minX=Math.min(minX,q.x);maxX=Math.max(maxX,q.x);minY=Math.min(minY,q.y)});
   const top=78,side=14;let fit=1;if(minY<top)fit=Math.min(fit,(gy-top)/(gy-minY));if(minX<side)fit=Math.min(fit,(cxT-side)/(cxT-minX));if(maxX>W-side)fit=Math.min(fit,(W-side-cxT)/(maxX-cxT));
   if(n<5)fit*=.55+.09*n;
-  built={gy,cxT,trunkH,trunkW,segs,leaves,flowers,fruits,knots,roots,si,fit,blobs}}
+  let cx2=0,cy2=0,minLX=1e9,maxLX=-1e9,minLY=1e9;leaves.forEach(q=>{cx2+=q.x;cy2+=q.y;minLX=Math.min(minLX,q.x);maxLX=Math.max(maxLX,q.x);minLY=Math.min(minLY,q.y)});
+  const canopy=leaves.length?{x:cx2/leaves.length,y:cy2/leaves.length,w:(maxLX-minLX)/2,top:minLY}:{x:cxT,y:gy-trunkH,w:20,top:gy-trunkH};
+  // 大樹：低い枝にブランコ、枝先に鳥の巣
+  let swing=null,nest=null;if(si>=4){const low=segs.filter(q=>q.depth===0&&q.id.startsWith("v:")).sort((a,b)=>b.y-a.y)[0];if(low)swing={x:low.x+(low.ex-low.x)*.62,y:low.y+(low.ey-low.y)*.62};
+    const hi=segs.filter(q=>q.depth===1).sort((a,b)=>Math.abs(b.ex-cxT)-Math.abs(a.ex-cxT))[0];if(hi)nest={x:hi.x+(hi.ex-hi.x)*.55,y:hi.y+(hi.ey-hi.y)*.55+3}}
+  built={gy,cxT,trunkH,trunkW,segs,leaves,flowers,fruits,knots,roots,si,fit,blobs,canopy,swing,nest}}
 
+function drawLayer(b,s,night){
+  layer.width=Math.max(1,Math.round(W*DPR));layer.height=Math.max(1,Math.round(H*DPR));const lc=layer.getContext("2d");ctx=lc;
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.translate(b.cxT,b.gy);ctx.scale(b.fit,b.fit);ctx.translate(-b.cxT,-b.gy);ctx.lineCap="round";
+  // 大樹：木全体がうっすら光る
+  if(b.si>=4&&s!=="winter"){const c=b.canopy;const g=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,c.w*1.5+40);g.addColorStop(0,night?"rgba(255,236,170,.28)":"rgba(255,248,210,.45)");g.addColorStop(1,"rgba(255,248,210,0)");ctx.fillStyle=g;ctx.fillRect(c.x-c.w*2-60,c.y-c.w*2-60,c.w*4+120,c.w*4+120)}
+  // 根元の張り出し（大きな木から）
+  if(b.si>=3){const w=b.trunkW,fl=w*(b.si>=4?1.25:.85);ctx.fillStyle=night?"#2a211a":"#5b4636";ctx.beginPath();ctx.moveTo(b.cxT-w/2-fl,b.gy+2);ctx.quadraticCurveTo(b.cxT-w/2,b.gy-4,b.cxT-w/2+1,b.gy-w*2.2);ctx.lineTo(b.cxT+w/2-1,b.gy-w*2.2);ctx.quadraticCurveTo(b.cxT+w/2,b.gy-4,b.cxT+w/2+fl,b.gy+2);ctx.fill()}
+  // 枝（風で少し揺れる）
+  const sway=()=>0;
+  const bark=night?"#2a211a":"#5b4636";ctx.strokeStyle=bark;
+  b.segs.forEach(sg2=>{const ox=sway(sg2.ey,sg2.depth);ctx.lineWidth=Math.max(.8,sg2.w);ctx.strokeStyle=sg2.broken?"#3a302a":bark;
+    ctx.beginPath();ctx.moveTo(sg2.x+sway(sg2.y,sg2.depth-1),sg2.y);
+    if(sg2.broken){const ax=sg2.mx+sway(sg2.my,sg2.depth),ay=sg2.my;ctx.quadraticCurveTo(sg2.x+(sg2.mx-sg2.x)*.5,sg2.y+(sg2.my-sg2.y)*.5,ax,ay);ctx.stroke();
+      // 折れて垂れた先
+      ctx.globalAlpha=.8;ctx.lineWidth=Math.max(1,sg2.w*.8);ctx.beginPath();ctx.moveTo(ax,ay);ctx.quadraticCurveTo(ax+Math.cos(sg2.ang)*sg2.len*.25,ay+sg2.len*.1,ax+Math.cos(sg2.ang)*sg2.len*.3,ay+sg2.len*.5);ctx.stroke();ctx.globalAlpha=1;
+      ctx.fillStyle="rgba(235,215,180,.95)";ctx.beginPath();ctx.arc(ax,ay,Math.max(1.6,sg2.w*.55),0,Math.PI*2);ctx.fill()}
+    else{ctx.quadraticCurveTo(sg2.mx+sway(sg2.my,sg2.depth),sg2.my,sg2.ex+ox,sg2.ey);ctx.stroke()}});
+  // こぶ・折れ目・手放した節
+  b.knots.forEach(k=>{const ox=sway(k.y,1);if(k.broken){ctx.strokeStyle="#1e1714";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(k.x+ox-k.w*.6,k.y-3);ctx.lineTo(k.x+ox+2,k.y+1);ctx.lineTo(k.x+ox-1,k.y+4);ctx.stroke()}
+    else{ctx.fillStyle=k.scar?"#4a3a2e":"#6b5240";ctx.beginPath();ctx.ellipse(k.x+ox,k.y,Math.max(2.5,k.w*.75),Math.max(2,k.w*.55),0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle=k.scar?"rgba(30,22,16,.6)":"rgba(212,170,80,.85)";ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(k.x+ox,k.y,Math.max(1.5,k.w*.42),Math.max(1.2,k.w*.3),0,0,Math.PI*2);ctx.stroke()}});
+  // 葉
+  const pal=LEAF[s];const leafAlpha=s==="winter"?0:1;
+  if(s!=="winter"){b.blobs.forEach(B=>{const c=pal[B.k%pal.length];const ox=sway(B.y,3);const g2=ctx.createRadialGradient(B.x+ox,B.y,0,B.x+ox,B.y,B.r);
+      const col="hsla("+c[0]+","+c[1]+"%,"+(c[2]*(night?.7:1))+"%,";g2.addColorStop(0,col+(s==="spring"?.35:.5)+")");g2.addColorStop(1,col+"0)");ctx.fillStyle=g2;ctx.beginPath();ctx.arc(B.x+ox,B.y,B.r,0,Math.PI*2);ctx.fill()});
+    b.leaves.forEach((L,i)=>{const c=pal[L.k%pal.length];const ox=sway(L.y,3);
+    const lit=night?.78:1;drawLeaf(L.x+ox,L.y,L.rot,L.sz*(s==="spring"?.82:1),"hsl("+c[0]+","+c[1]+"%,"+(c[2]*lit)+"%)",.92)})}
+  else{ // 冬：枝先にわずかな枯れ葉と雪
+    b.leaves.forEach((L,i)=>{if(i%23)return;drawLeaf(L.x,L.y,L.rot,L.sz*.8,night?"hsl(28,20%,26%)":"hsl(28,30%,52%)",.85)});
+    ctx.fillStyle="rgba(255,255,255,.85)";b.segs.forEach((sg2,i)=>{if(sg2.depth<1||i%2)return;ctx.beginPath();ctx.ellipse(sg2.mx+sway(sg2.my,sg2.depth),sg2.my-sg2.w*.5-1,Math.min(5,Math.max(1.5,sg2.len*.07)),1.3,0,0,Math.PI*2);ctx.fill()})}
+  // 花
+  b.flowers.forEach(F=>{const ox=sway(F.y,3);const bloom=s==="spring"||s==="summer";const r=bloom?3.4:1.8;ctx.fillStyle="hsl("+F.hue+","+(bloom?70:40)+"%,"+(night?48:72)+"%)";
+    for(let k=0;k<5;k++){const a=k/5*Math.PI*2+F.ph;ctx.beginPath();ctx.arc(F.x+ox+Math.cos(a)*r*.9,F.y+Math.sin(a)*r*.9,r*.7,0,Math.PI*2);ctx.fill()}
+    ctx.fillStyle="#f6d77a";ctx.beginPath();ctx.arc(F.x+ox,F.y,r*.45,0,Math.PI*2);ctx.fill()});
+  // 実
+  b.fruits.forEach(F=>{const ox=sway(F.y,3);F.sx=F.x+ox;F.sy=F.y;F.hx=b.cxT+(F.sx-b.cxT)*b.fit;F.hy=b.gy+(F.y-b.gy)*b.fit;
+    ctx.strokeStyle="#5b4636";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(F.sx,F.y-6);ctx.lineTo(F.sx,F.y-2);ctx.stroke();
+    const gg=ctx.createRadialGradient(F.sx-1.5,F.y-1.5,.5,F.sx,F.y,5.5);gg.addColorStop(0,"#ffd3a0");gg.addColorStop(1,s==="autumn"?"#c8542e":"#d9763a");ctx.fillStyle=gg;ctx.beginPath();ctx.arc(F.sx,F.y+1,5,0,Math.PI*2);ctx.fill()});
+  // 大樹：幹の樹皮の模様
+  if(b.si>=4){ctx.strokeStyle="rgba(30,22,16,.45)";ctx.lineWidth=1.1;const r=rng(31);for(let i=0;i<9;i++){const x=b.cxT+(r()-.5)*b.trunkW*.8,y0=b.gy-r()*b.trunkH*.25,len=10+r()*b.trunkH*.35;ctx.beginPath();ctx.moveTo(x,y0);ctx.quadraticCurveTo(x+(r()-.5)*4,y0-len/2,x+(r()-.5)*3,y0-len);ctx.stroke()}}
+  // ブランコと鳥の巣
+  if(b.swing){const sw=b.swing,len=Math.max(30,(b.gy-sw.y)*.62);ctx.strokeStyle=night?"#8c7a62":"#d8c39b";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(sw.x-13,sw.y);ctx.lineTo(sw.x-13,sw.y+len);ctx.moveTo(sw.x+13,sw.y);ctx.lineTo(sw.x+13,sw.y+len);ctx.stroke();ctx.fillStyle=night?"#4a3a2e":"#8a6446";ctx.fillRect(sw.x-18,sw.y+len,36,6)}
+  if(b.nest){const ne=b.nest;ctx.fillStyle=night?"#3d3024":"#7b5f43";ctx.save();ctx.translate(ne.x,ne.y);ctx.scale(1.5,1.5);ctx.translate(-ne.x,-ne.y);ctx.beginPath();ctx.ellipse(ne.x,ne.y,10,5,0,0,Math.PI);ctx.fill();ctx.strokeStyle="rgba(40,28,18,.6)";ctx.lineWidth=.8;for(let i=-8;i<=8;i+=3){ctx.beginPath();ctx.moveTo(ne.x+i,ne.y);ctx.lineTo(ne.x+i*.7,ne.y+4);ctx.stroke()}
+    ctx.fillStyle=night?"#556070":"#5e7fa8";ctx.beginPath();ctx.ellipse(ne.x+2,ne.y-4,5,3.5,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(ne.x+6,ne.y-7,2.6,0,Math.PI*2);ctx.fill();ctx.fillStyle="#e7b54a";ctx.beginPath();ctx.moveTo(ne.x+8.4,ne.y-7.4);ctx.lineTo(ne.x+11,ne.y-6.8);ctx.lineTo(ne.x+8.4,ne.y-6.2);ctx.fill();ctx.restore()}
+  ctx=mainCtx}
 function drawLeaf(x,y,rot,sz,col,alpha){ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.globalAlpha=alpha;ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(-sz,0);ctx.quadraticCurveTo(0,-sz*.75,sz,0);ctx.quadraticCurveTo(0,sz*.75,-sz,0);ctx.fill();ctx.restore()}
 let t=0,tPrev=performance.now();
 function frame(tn){
@@ -254,39 +310,15 @@ function frame(tn){
   // 根
   ctx.lineCap="round";ctx.strokeStyle="rgba(214,190,150,.85)";
   b.roots.forEach(rt=>{ctx.lineWidth=Math.max(1,rt.w);ctx.beginPath();ctx.moveTo(rt.pts[0][0],rt.pts[0][1]);for(let i=1;i<rt.pts.length;i++){ctx.lineWidth=Math.max(.8,rt.w*(1-i/rt.pts.length));ctx.lineTo(rt.pts[i][0],rt.pts[i][1])}ctx.stroke()});
-  ctx.save();ctx.translate(b.cxT,b.gy);ctx.scale(b.fit,b.fit);ctx.translate(-b.cxT,-b.gy);
-  // 枝（風で少し揺れる）
-  const sway=(y,depth)=>wind*(b.gy-y)*.08*(1+Math.max(0,depth)*.5);
-  const bark=night?"#2a211a":"#5b4636";ctx.strokeStyle=bark;
-  b.segs.forEach(sg2=>{const ox=sway(sg2.ey,sg2.depth);ctx.lineWidth=Math.max(.8,sg2.w);ctx.strokeStyle=sg2.broken?"#3a302a":bark;
-    ctx.beginPath();ctx.moveTo(sg2.x+sway(sg2.y,sg2.depth-1),sg2.y);
-    if(sg2.broken){const ax=sg2.mx+sway(sg2.my,sg2.depth),ay=sg2.my;ctx.quadraticCurveTo(sg2.x+(sg2.mx-sg2.x)*.5,sg2.y+(sg2.my-sg2.y)*.5,ax,ay);ctx.stroke();
-      // 折れて垂れた先
-      ctx.globalAlpha=.8;ctx.lineWidth=Math.max(1,sg2.w*.8);ctx.beginPath();ctx.moveTo(ax,ay);ctx.quadraticCurveTo(ax+Math.cos(sg2.ang)*sg2.len*.25,ay+sg2.len*.1,ax+Math.cos(sg2.ang)*sg2.len*.3,ay+sg2.len*.5);ctx.stroke();ctx.globalAlpha=1;
-      ctx.fillStyle="rgba(235,215,180,.95)";ctx.beginPath();ctx.arc(ax,ay,Math.max(1.6,sg2.w*.55),0,Math.PI*2);ctx.fill()}
-    else{ctx.quadraticCurveTo(sg2.mx+sway(sg2.my,sg2.depth),sg2.my,sg2.ex+ox,sg2.ey);ctx.stroke()}});
-  // こぶ・折れ目・手放した節
-  b.knots.forEach(k=>{const ox=sway(k.y,1);if(k.broken){ctx.strokeStyle="#1e1714";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(k.x+ox-k.w*.6,k.y-3);ctx.lineTo(k.x+ox+2,k.y+1);ctx.lineTo(k.x+ox-1,k.y+4);ctx.stroke()}
-    else{ctx.fillStyle=k.scar?"#4a3a2e":"#6b5240";ctx.beginPath();ctx.ellipse(k.x+ox,k.y,Math.max(2.5,k.w*.75),Math.max(2,k.w*.55),0,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle=k.scar?"rgba(30,22,16,.6)":"rgba(212,170,80,.85)";ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(k.x+ox,k.y,Math.max(1.5,k.w*.42),Math.max(1.2,k.w*.3),0,0,Math.PI*2);ctx.stroke()}});
-  // 葉
-  const pal=LEAF[s];const leafAlpha=s==="winter"?0:1;
-  if(s!=="winter"){b.blobs.forEach(B=>{const c=pal[B.k%pal.length];const ox=sway(B.y,3);const g2=ctx.createRadialGradient(B.x+ox,B.y,0,B.x+ox,B.y,B.r);
-      const col="hsla("+c[0]+","+c[1]+"%,"+(c[2]*(night?.7:1))+"%,";g2.addColorStop(0,col+(s==="spring"?.35:.5)+")");g2.addColorStop(1,col+"0)");ctx.fillStyle=g2;ctx.beginPath();ctx.arc(B.x+ox,B.y,B.r,0,Math.PI*2);ctx.fill()});
-    b.leaves.forEach((L,i)=>{const c=pal[L.k%pal.length];const ox=sway(L.y,3)+(reduce?0:Math.sin(t*2+L.ph)*.8);
-    const lit=night?.78:1;drawLeaf(L.x+ox,L.y,L.rot+(reduce?0:Math.sin(t*1.5+L.ph)*.15),L.sz*(s==="spring"?.82:1),"hsl("+c[0]+","+c[1]+"%,"+(c[2]*lit)+"%)",.92)})}
-  else{ // 冬：枝先にわずかな枯れ葉と雪
-    b.leaves.forEach((L,i)=>{if(i%23)return;drawLeaf(L.x,L.y,L.rot,L.sz*.8,night?"hsl(28,20%,26%)":"hsl(28,30%,52%)",.85)});
-    ctx.fillStyle="rgba(255,255,255,.85)";b.segs.forEach((sg2,i)=>{if(sg2.depth<1||i%2)return;ctx.beginPath();ctx.ellipse(sg2.mx+sway(sg2.my,sg2.depth),sg2.my-sg2.w*.5-1,Math.min(5,Math.max(1.5,sg2.len*.07)),1.3,0,0,Math.PI*2);ctx.fill()})}
-  // 花
-  b.flowers.forEach(F=>{const ox=sway(F.y,3);const bloom=s==="spring"||s==="summer";const r=bloom?3.4:1.8;ctx.fillStyle="hsl("+F.hue+","+(bloom?70:40)+"%,"+(night?48:72)+"%)";
-    for(let k=0;k<5;k++){const a=k/5*Math.PI*2+F.ph;ctx.beginPath();ctx.arc(F.x+ox+Math.cos(a)*r*.9,F.y+Math.sin(a)*r*.9,r*.7,0,Math.PI*2);ctx.fill()}
-    ctx.fillStyle="#f6d77a";ctx.beginPath();ctx.arc(F.x+ox,F.y,r*.45,0,Math.PI*2);ctx.fill()});
-  // 実
-  b.fruits.forEach(F=>{const ox=sway(F.y,3)+(reduce?0:Math.sin(t*1.7+F.ph)*.8);F.sx=F.x+ox;F.sy=F.y;F.hx=b.cxT+(F.sx-b.cxT)*b.fit;F.hy=b.gy+(F.y-b.gy)*b.fit;
-    ctx.strokeStyle="#5b4636";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(F.sx,F.y-6);ctx.lineTo(F.sx,F.y-2);ctx.stroke();
-    const gg=ctx.createRadialGradient(F.sx-1.5,F.y-1.5,.5,F.sx,F.y,5.5);gg.addColorStop(0,"#ffd3a0");gg.addColorStop(1,s==="autumn"?"#c8542e":"#d9763a");ctx.fillStyle=gg;ctx.beginPath();ctx.arc(F.sx,F.y+1,5,0,Math.PI*2);ctx.fill()});
-  ctx.restore();
+  // 木陰と下草（大きな木から）、根元の花と若い芽（大樹）
+  if(b.si>=3){const c=b.canopy,cw=(c.w+20)*b.fit;ctx.fillStyle=s==="winter"?"rgba(120,130,145,.18)":"rgba(40,60,30,"+(s==="summer"?.28:.18)+")";ctx.beginPath();ctx.ellipse(b.cxT+(c.x-b.cxT)*b.fit,b.gy+1,cw,7,0,0,Math.PI*2);ctx.fill();
+    if(s!=="winter"){const r=rng(77);ctx.strokeStyle=s==="autumn"?"#9a8a50":"#5f8a4a";ctx.lineWidth=1;for(let i=0;i<34;i++){const x=b.cxT+(r()-.5)*cw*2.1,hh=3+r()*5;ctx.beginPath();ctx.moveTo(x,b.gy);ctx.lineTo(x-1.5,b.gy-hh);ctx.moveTo(x,b.gy);ctx.lineTo(x+1.5,b.gy-hh*.8);ctx.stroke()}
+      if(b.si>=4){for(let i=0;i<14;i++){const x=b.cxT+(r()-.5)*cw*2,y=b.gy-2;if(i%3===0){ctx.strokeStyle="#5f8a4a";ctx.beginPath();ctx.moveTo(x,b.gy);ctx.lineTo(x,y-7);ctx.stroke();ctx.fillStyle="#7fae5c";ctx.beginPath();ctx.ellipse(x-2,y-8,2.4,1.2,-.5,0,Math.PI*2);ctx.ellipse(x+2,y-8,2.4,1.2,.5,0,Math.PI*2);ctx.fill()}
+        else{ctx.fillStyle="hsl("+[350,48,280,20][i%4]+",65%,"+(night?45:72)+"%)";ctx.beginPath();ctx.arc(x,y-2,1.8,0,Math.PI*2);ctx.fill()}}}}}
+  // 木（止まった絵を一度だけ描き、風で根元から少しだけ傾ける）
+  {const key=[built.segs.length,built.leaves.length,s,night,W,H,b.fit,st.storms.map(x=>x.prog).join(",")].join("|");if(key!==layerKey){drawLayer(b,s,night);layerKey=key}
+    const k=wind*.5;ctx.save();ctx.setTransform(DPR,0,-k*DPR,DPR,k*b.gy*DPR,0);ctx.drawImage(layer,0,0,W,H);ctx.restore();ctx.setTransform(DPR,0,0,DPR,0,0);
+    b.fruits.forEach(F=>{F.hx=b.cxT+(F.x-b.cxT)*b.fit;F.hy=b.gy+(F.y-b.gy)*b.fit;F.hx+=-k*(F.hy-b.gy)})}
   // 舞う葉・花びら・雪
   if(!reduce){const want=s==="autumn"?14:s==="spring"?10:s==="winter"?40:0;while(fallers.length<want)fallers.push({x:Math.random()*W,y:Math.random()*b.gy,v:12+Math.random()*20,ph:Math.random()*6});while(fallers.length>want)fallers.pop();
     fallers.forEach(f=>{f.y+=f.v*dt*(s==="winter"?1.3:1);f.x+=(Math.sin(t+f.ph)*12+gust*40)*dt;if(f.y>b.gy){f.y=-5;f.x=Math.random()*W}
@@ -358,7 +390,7 @@ function show(n){current=n;document.querySelectorAll(".tabs button").forEach(b=>
   ({grow:renderGrow,look:renderLook,log:renderLog,set:()=>{valDraft=null;renderSet()}})[n]()}
 document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b)show(b.dataset.v)});
 const tog=(arr,x)=>{const i=arr.indexOf(x);if(i>=0)arr.splice(i,1);else arr.push(x)};
-const rebuild=()=>{built=null;renderHead()};
+const rebuild=()=>{built=null;layerKey="";renderHead()};
 $("v-grow").addEventListener("input",e=>{const t=e.target;if(t.id==="g-text"){draft.text=t.value;$("g-save").disabled=!(draft.care&&draft.text.trim())}if(t.id==="g-ins")draft.insight=t.value;if(t.id==="s-text")storm.text=t.value});
 $("v-grow").addEventListener("toggle",e=>{if(e.target.id==="stormBox")storm.on=e.target.open},true);
 $("v-grow").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
